@@ -1,0 +1,45 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  main:
+    web-application-type: reactive
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+
+          # Disable automatic Eureka route generation.
+          # We define routes explicitly below.
+          discovery:
+            locator:
+              enabled: false
+              lower-case-service-id: true
+
+          # Explicit Gateway routes
+          routes:
+
+            # Authentication routes
+            - id: auth-service
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/auth/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+management:
+  endpoint:
+    gateway:
+      access: read-only
+
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway

@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: api-gateway
+
+  main:
+    web-application-type: reactive
+
+  config:
+    import: "configserver:http://localhost:8888"
+
+management:
+  endpoint:
+    gateway:
+      access: read-only
+
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
