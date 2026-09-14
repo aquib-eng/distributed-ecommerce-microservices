@@ -15,8 +15,6 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    // Same secret used by Auth Service
-    // Development only - we will move this later
     private static final String SECRET =
             "my-super-secret-key-for-ecommerce-jwt-authentication-2026";
 
@@ -25,14 +23,18 @@ public class JwtService {
                     SECRET.getBytes(StandardCharsets.UTF_8)
             );
 
+    /*
+     * Validate JWT.
+     */
     public boolean isTokenValid(String token) {
 
         try {
 
-            Jws<Claims> claims = Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token);
+            Jws<Claims> claims =
+                    Jwts.parser()
+                            .verifyWith(secretKey)
+                            .build()
+                            .parseSignedClaims(token);
 
             return claims.getPayload()
                     .getExpiration()
@@ -44,6 +46,9 @@ public class JwtService {
         }
     }
 
+    /*
+     * Extract Bearer token from Authorization header.
+     */
     public String extractToken(String authorizationHeader) {
 
         if (authorizationHeader == null ||
@@ -53,5 +58,29 @@ public class JwtService {
         }
 
         return authorizationHeader.substring(7);
+    }
+
+    /*
+     * Extract user ID from JWT subject.
+     *
+     * The Auth Service stores the user's UUID
+     * as the JWT subject.
+     */
+    public String extractUserId(String token) {
+
+        try {
+
+            Jws<Claims> claims =
+                    Jwts.parser()
+                            .verifyWith(secretKey)
+                            .build()
+                            .parseSignedClaims(token);
+
+            return claims.getPayload().getSubject();
+
+        } catch (JwtException | IllegalArgumentException e) {
+
+            return null;
+        }
     }
 }

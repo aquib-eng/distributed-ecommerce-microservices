@@ -29,7 +29,9 @@ public class JwtAuthenticationFilter implements GlobalFilter {
                 .getURI()
                 .getPath();
 
-        // Public endpoints
+        /*
+         * Public endpoints.
+         */
         if (path.equals("/api/auth/login") ||
             path.equals("/api/auth/register") ||
             path.equals("/actuator/health")) {
@@ -37,19 +39,25 @@ public class JwtAuthenticationFilter implements GlobalFilter {
             return chain.filter(exchange);
         }
 
-        // Get Authorization header
+        /*
+         * Read Authorization header.
+         */
         String authorizationHeader =
                 exchange.getRequest()
                         .getHeaders()
                         .getFirst("Authorization");
 
-        // Extract JWT
+        /*
+         * Extract JWT.
+         */
         String token =
                 jwtService.extractToken(
                         authorizationHeader
                 );
 
-        // Validate JWT
+        /*
+         * Reject request if token is missing or invalid.
+         */
         if (token == null ||
                 !jwtService.isTokenValid(token)) {
 
@@ -62,7 +70,42 @@ public class JwtAuthenticationFilter implements GlobalFilter {
                     .setComplete();
         }
 
-        // JWT valid
-        return chain.filter(exchange);
+        /*
+         * Extract authenticated user's ID.
+         */
+        String userId =
+                jwtService.extractUserId(token);
+
+        /*
+         * Reject if user ID cannot be extracted.
+         */
+        if (userId == null) {
+
+            exchange.getResponse()
+                    .setStatusCode(
+                            HttpStatus.UNAUTHORIZED
+                    );
+
+            return exchange.getResponse()
+                    .setComplete();
+        }
+
+        /*
+         * Add authenticated user ID to downstream request.
+         */
+        ServerWebExchange modifiedExchange =
+                exchange.mutate()
+                        .request(
+                                exchange.getRequest()
+                                        .mutate()
+                                        .header(
+                                                "X-User-Id",
+                                                userId
+                                        )
+                                        .build()
+                        )
+                        .build();
+
+        return chain.filter(modifiedExchange);
     }
 }
