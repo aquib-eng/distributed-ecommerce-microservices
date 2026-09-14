@@ -1,6 +1,3 @@
-server:
-  port: 8080
-
 spring:
   application:
     name: api-gateway
@@ -12,34 +9,32 @@ spring:
     gateway:
       server:
         webflux:
-
-          # Disable automatic Eureka route generation.
-          # We define routes explicitly below.
           discovery:
             locator:
               enabled: false
               lower-case-service-id: true
 
-          # Explicit Gateway routes
           routes:
 
-            # Authentication routes
             - id: auth-service
               uri: lb://auth-service
               predicates:
                 - Path=/api/auth/**
 
-            # Product routes
             - id: product-service
               uri: lb://product-service
               predicates:
                 - Path=/api/products/**
 
-            # Cart routes
             - id: cart-service
               uri: lb://cart-service
               predicates:
                 - Path=/api/cart/**
+
+            - id: order-service
+              uri: lb://order-service
+              predicates:
+                - Path=/api/orders/**
 
 eureka:
   client:
