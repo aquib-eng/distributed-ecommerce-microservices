@@ -75,9 +75,7 @@ public class OrderService {
         Order order = orderRepository
                 .findByOrderIdAndUserId(orderId, userId)
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Order not found"
-                        )
+                        new RuntimeException("Order not found")
                 );
 
         return convertToResponse(order);
@@ -92,15 +90,11 @@ public class OrderService {
         Order order = orderRepository
                 .findByOrderIdAndUserId(orderId, userId)
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Order not found"
-                        )
+                        new RuntimeException("Order not found")
                 );
 
         if ("CANCELLED".equals(order.getStatus())) {
-            throw new RuntimeException(
-                    "Order is already cancelled"
-            );
+            throw new RuntimeException("Order is already cancelled");
         }
 
         if ("CONFIRMED".equals(order.getStatus())) {
@@ -111,8 +105,7 @@ public class OrderService {
 
         order.setStatus("CANCELLED");
 
-        Order updatedOrder =
-                orderRepository.save(order);
+        Order updatedOrder = orderRepository.save(order);
 
         return convertToResponse(updatedOrder);
     }

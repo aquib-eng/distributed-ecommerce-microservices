@@ -1,12 +1,9 @@
-server:
-  port: 8084
-
 spring:
   application:
-    name: order-service
-    
+    name: payment-service
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/order_db
+    url: jdbc:postgresql://localhost:5432/payment_db
     username: postgres
     password: 250840120023
 
@@ -17,6 +14,9 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+server:
+  port: 8086
 
 eureka:
   client:
