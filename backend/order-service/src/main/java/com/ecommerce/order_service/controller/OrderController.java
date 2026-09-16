@@ -22,24 +22,31 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+
+    // CREATE ORDER
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(
             @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody CreateOrderRequest request) {
 
-        UUID userUUID = UUID.fromString(userId);
+        UUID userUUID = parseUserId(userId);
 
         OrderResponse response =
-                orderService.createOrder(userUUID, request);
+                orderService.createOrder(
+                        userUUID,
+                        request
+                );
 
         return ResponseEntity.ok(response);
     }
 
+
+    // GET ALL ORDERS
     @GetMapping
     public ResponseEntity<List<OrderResponse>> getUserOrders(
             @RequestHeader("X-User-Id") String userId) {
 
-        UUID userUUID = UUID.fromString(userId);
+        UUID userUUID = parseUserId(userId);
 
         List<OrderResponse> orders =
                 orderService.getUserOrders(userUUID);
@@ -47,12 +54,14 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
+
+    // GET SINGLE ORDER
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponse> getOrder(
             @RequestHeader("X-User-Id") String userId,
             @PathVariable UUID orderId) {
 
-        UUID userUUID = UUID.fromString(userId);
+        UUID userUUID = parseUserId(userId);
 
         OrderResponse response =
                 orderService.getOrder(
@@ -63,12 +72,14 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
+
+    // CANCEL ORDER
     @PutMapping("/{orderId}/cancel")
     public ResponseEntity<OrderResponse> cancelOrder(
             @RequestHeader("X-User-Id") String userId,
             @PathVariable UUID orderId) {
 
-        UUID userUUID = UUID.fromString(userId);
+        UUID userUUID = parseUserId(userId);
 
         OrderResponse response =
                 orderService.cancelOrder(
@@ -77,5 +88,21 @@ public class OrderController {
                 );
 
         return ResponseEntity.ok(response);
+    }
+
+
+    // PARSE USER UUID
+    private UUID parseUserId(String userId) {
+
+        try {
+
+            return UUID.fromString(userId);
+
+        } catch (IllegalArgumentException ex) {
+
+            throw new IllegalArgumentException(
+                    "Invalid X-User-Id"
+            );
+        }
     }
 }

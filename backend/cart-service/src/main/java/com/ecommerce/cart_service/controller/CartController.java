@@ -29,7 +29,7 @@ public class CartController {
     public ResponseEntity<CartResponse> getCart(
             @RequestHeader("X-User-Id") String userId) {
 
-        UUID userUUID = UUID.fromString(userId);
+        UUID userUUID = parseUserId(userId);
 
         return ResponseEntity.ok(
                 cartService.getCart(userUUID)
@@ -44,7 +44,7 @@ public class CartController {
             @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody AddCartItemRequest request) {
 
-        UUID userUUID = UUID.fromString(userId);
+        UUID userUUID = parseUserId(userId);
 
         CartResponse response =
                 cartService.addItem(
@@ -66,7 +66,7 @@ public class CartController {
             @PathVariable String productId,
             @Valid @RequestBody UpdateCartItemRequest request) {
 
-        UUID userUUID = UUID.fromString(userId);
+        UUID userUUID = parseUserId(userId);
 
         CartResponse response =
                 cartService.updateItemQuantity(
@@ -86,7 +86,7 @@ public class CartController {
             @RequestHeader("X-User-Id") String userId,
             @PathVariable String productId) {
 
-        UUID userUUID = UUID.fromString(userId);
+        UUID userUUID = parseUserId(userId);
 
         cartService.removeItem(
                 userUUID,
@@ -103,10 +103,27 @@ public class CartController {
     public ResponseEntity<Void> clearCart(
             @RequestHeader("X-User-Id") String userId) {
 
-        UUID userUUID = UUID.fromString(userId);
+        UUID userUUID = parseUserId(userId);
 
         cartService.clearCart(userUUID);
 
         return ResponseEntity.noContent().build();
+    }
+
+    /*
+     * Convert X-User-Id into UUID.
+     */
+    private UUID parseUserId(String userId) {
+
+        try {
+
+            return UUID.fromString(userId);
+
+        } catch (IllegalArgumentException ex) {
+
+            throw new IllegalArgumentException(
+                    "Invalid X-User-Id"
+            );
+        }
     }
 }

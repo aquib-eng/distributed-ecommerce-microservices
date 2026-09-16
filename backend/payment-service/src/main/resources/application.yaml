@@ -6,7 +6,6 @@ spring:
     url: jdbc:postgresql://localhost:5432/payment_db
     username: postgres
     password: 250840120023
-
   jpa:
     hibernate:
       ddl-auto: update
@@ -22,6 +21,10 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+
+  instance:
+    prefer-ip-address: true
+    ip-address: 127.0.0.1
 
 management:
   endpoints:

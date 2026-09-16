@@ -16,21 +16,24 @@ import java.util.UUID;
 @Service
 public class JwtService {
 
-    // Development secret.
-    // Later we will move this to environment/config-server.
+    // Development secret
+    // Later move this to environment/config-server.
     private static final String SECRET =
             "my-super-secret-key-for-ecommerce-jwt-authentication-2026";
 
-    // Access token validity: 15 minutes
+    // 15 minutes
     private static final long EXPIRATION_TIME =
-            15 * 60 * 1000;
+            15 * 60 * 1000L;
 
     private final SecretKey secretKey =
             Keys.hmacShaKeyFor(
                     SECRET.getBytes(StandardCharsets.UTF_8)
             );
 
-    // Generate JWT token
+    // ==========================================
+    // GENERATE TOKEN
+    // ==========================================
+
     public String generateToken(
             UUID userId,
             String email,
@@ -51,7 +54,10 @@ public class JwtService {
                 .compact();
     }
 
-    // Validate JWT token
+    // ==========================================
+    // VALIDATE TOKEN
+    // ==========================================
+
     public boolean isTokenValid(String token) {
 
         try {
@@ -61,9 +67,11 @@ public class JwtService {
                     .build()
                     .parseSignedClaims(token);
 
-            return claims.getPayload()
-                    .getExpiration()
-                    .after(new Date());
+            Date expiration =
+                    claims.getPayload().getExpiration();
+
+            return expiration != null
+                    && expiration.after(new Date());
 
         } catch (JwtException | IllegalArgumentException e) {
 
@@ -71,19 +79,34 @@ public class JwtService {
         }
     }
 
-    // Extract Bearer token from Authorization header
+    // ==========================================
+    // EXTRACT TOKEN
+    // ==========================================
+
     public String extractToken(String authorizationHeader) {
 
-        if (authorizationHeader == null ||
-                !authorizationHeader.startsWith("Bearer ")) {
-
+        if (authorizationHeader == null) {
             return null;
         }
 
-        return authorizationHeader.substring(7);
+        if (!authorizationHeader.startsWith("Bearer ")) {
+            return null;
+        }
+
+        String token =
+                authorizationHeader.substring(7).trim();
+
+        if (token.isEmpty()) {
+            return null;
+        }
+
+        return token;
     }
 
-    // Extract user ID from JWT subject
+    // ==========================================
+    // EXTRACT USER ID
+    // ==========================================
+
     public UUID extractUserId(String token) {
 
         Jws<Claims> claims = Jwts.parser()
@@ -91,8 +114,13 @@ public class JwtService {
                 .build()
                 .parseSignedClaims(token);
 
-        return UUID.fromString(
-                claims.getPayload().getSubject()
-        );
+        String subject =
+                claims.getPayload().getSubject();
+
+        if (subject == null || subject.isBlank()) {
+            throw new JwtException("User ID missing from token");
+        }
+
+        return UUID.fromString(subject);
     }
 }

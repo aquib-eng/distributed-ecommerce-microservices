@@ -1,6 +1,9 @@
 package com.ecommerce.payment_service.service;
 
 import com.ecommerce.payment_service.dto.PaymentResponse;
+import com.ecommerce.payment_service.exception.PaymentAlreadyExistsException;
+import com.ecommerce.payment_service.exception.PaymentNotFoundException;
+import com.ecommerce.payment_service.exception.PaymentRefundException;
 import com.ecommerce.payment_service.model.Payment;
 import com.ecommerce.payment_service.model.PaymentStatus;
 import com.ecommerce.payment_service.repository.PaymentRepository;
@@ -22,7 +25,10 @@ public class PaymentService {
         this.paymentRepository = paymentRepository;
     }
 
-    // Process a new payment
+    // ==========================================
+    // PROCESS PAYMENT
+    // ==========================================
+
     @Transactional
     public PaymentResponse processPayment(
             UUID orderId,
@@ -30,21 +36,26 @@ public class PaymentService {
             Double amount,
             String paymentMethod) {
 
-        // One payment per order in this first version
+        // One payment per order
         if (paymentRepository.existsByOrderId(orderId)) {
-            throw new RuntimeException(
-                    "Payment already exists for order: " + orderId);
+
+            throw new PaymentAlreadyExistsException(
+                    "Payment already exists for order: " + orderId
+            );
         }
 
-        // Generate a simple transaction ID
+        // Generate transaction ID
         String transactionId =
-                "TXN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                "TXN-" +
+                UUID.randomUUID()
+                        .toString()
+                        .substring(0, 8)
+                        .toUpperCase();
 
         /*
-         * This is a simulated payment.
+         * Simulated payment.
          *
-         * For now we assume the payment succeeds.
-         * Later we can integrate a real payment provider.
+         * For now every valid payment succeeds.
          */
         Payment payment = new Payment(
                 orderId,
@@ -55,36 +66,53 @@ public class PaymentService {
                 transactionId
         );
 
-        Payment savedPayment = paymentRepository.save(payment);
+        Payment savedPayment =
+                paymentRepository.save(payment);
 
         return convertToResponse(savedPayment);
     }
 
-    // Get payment by payment ID
+    // ==========================================
+    // GET PAYMENT BY PAYMENT ID
+    // ==========================================
+
     @Transactional(readOnly = true)
     public PaymentResponse getPaymentById(UUID paymentId) {
 
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Payment not found: " + paymentId));
+        Payment payment =
+                paymentRepository.findById(paymentId)
+                        .orElseThrow(() ->
+                                new PaymentNotFoundException(
+                                        "Payment not found: " + paymentId
+                                )
+                        );
 
         return convertToResponse(payment);
     }
 
-    // Get payment by order ID
+    // ==========================================
+    // GET PAYMENT BY ORDER ID
+    // ==========================================
+
     @Transactional(readOnly = true)
     public PaymentResponse getPaymentByOrderId(UUID orderId) {
 
-        Payment payment = paymentRepository.findByOrderId(orderId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Payment not found for order: " + orderId));
+        Payment payment =
+                paymentRepository.findByOrderId(orderId)
+                        .orElseThrow(() ->
+                                new PaymentNotFoundException(
+                                        "Payment not found for order: "
+                                                + orderId
+                                )
+                        );
 
         return convertToResponse(payment);
     }
 
-    // Get all payments of a user
+    // ==========================================
+    // GET ALL PAYMENTS BY USER
+    // ==========================================
+
     @Transactional(readOnly = true)
     public List<PaymentResponse> getPaymentsByUserId(UUID userId) {
 
@@ -94,30 +122,46 @@ public class PaymentService {
                 .collect(Collectors.toList());
     }
 
-    // Refund payment
+    // ==========================================
+    // REFUND PAYMENT
+    // ==========================================
+
     @Transactional
     public PaymentResponse refundPayment(UUID paymentId) {
 
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Payment not found: " + paymentId));
+        Payment payment =
+                paymentRepository.findById(paymentId)
+                        .orElseThrow(() ->
+                                new PaymentNotFoundException(
+                                        "Payment not found: " + paymentId
+                                )
+                        );
 
         if (payment.getStatus() != PaymentStatus.SUCCESS) {
-            throw new RuntimeException(
-                    "Only successful payments can be refunded");
+
+            throw new PaymentRefundException(
+                    "Only successful payments can be refunded"
+            );
         }
 
         payment.setStatus(PaymentStatus.REFUNDED);
-        payment.setUpdatedAt(LocalDateTime.now());
 
-        Payment updatedPayment = paymentRepository.save(payment);
+        payment.setUpdatedAt(
+                LocalDateTime.now()
+        );
+
+        Payment updatedPayment =
+                paymentRepository.save(payment);
 
         return convertToResponse(updatedPayment);
     }
 
-    // Convert Entity to DTO
-    private PaymentResponse convertToResponse(Payment payment) {
+    // ==========================================
+    // ENTITY -> DTO
+    // ==========================================
+
+    private PaymentResponse convertToResponse(
+            Payment payment) {
 
         return new PaymentResponse(
                 payment.getPaymentId(),

@@ -25,9 +25,9 @@ public class AuthController {
         this.authService = authService;
     }
 
-    // =========================
+    // ==========================================
     // REGISTER
-    // =========================
+    // ==========================================
 
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(
@@ -43,9 +43,9 @@ public class AuthController {
                 .body(response);
     }
 
-    // =========================
+    // ==========================================
     // LOGIN
-    // =========================
+    // ==========================================
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(
@@ -57,16 +57,19 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // =========================
+    // ==========================================
     // CURRENT USER
-    // =========================
+    // ==========================================
 
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getCurrentUser(
-            @RequestHeader("Authorization")
+            @RequestHeader(value = "Authorization", required = false)
             String authorizationHeader) {
 
-        // Extract JWT
+        // ------------------------------------------
+        // 1. Extract token
+        // ------------------------------------------
+
         String token =
                 authService.extractToken(
                         authorizationHeader
@@ -79,15 +82,57 @@ public class AuthController {
                     .build();
         }
 
-        // Extract user ID from JWT
-        UUID userId =
-                authService.extractUserId(token);
+        // ------------------------------------------
+        // 2. Validate JWT
+        // ------------------------------------------
 
-        // Find user in database
-        User user =
-                authService.getUserById(userId);
+        if (!authService.isTokenValid(token)) {
 
-        // Return safe user information
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .build();
+        }
+
+        // ------------------------------------------
+        // 3. Extract user ID
+        // ------------------------------------------
+
+        UUID userId;
+
+        try {
+
+            userId =
+                    authService.extractUserId(token);
+
+        } catch (Exception e) {
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .build();
+        }
+
+        // ------------------------------------------
+        // 4. Find user
+        // ------------------------------------------
+
+        User user;
+
+        try {
+
+            user =
+                    authService.getUserById(userId);
+
+        } catch (IllegalArgumentException e) {
+
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .build();
+        }
+
+        // ------------------------------------------
+        // 5. Return user
+        // ------------------------------------------
+
         UserResponse response =
                 UserResponse.fromUser(user);
 

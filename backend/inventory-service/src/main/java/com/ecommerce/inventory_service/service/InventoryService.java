@@ -1,6 +1,8 @@
 package com.ecommerce.inventory_service.service;
 
 import com.ecommerce.inventory_service.dto.InventoryResponse;
+import com.ecommerce.inventory_service.exception.InventoryAlreadyExistsException;
+import com.ecommerce.inventory_service.exception.InventoryNotFoundException;
 import com.ecommerce.inventory_service.model.Inventory;
 import com.ecommerce.inventory_service.repository.InventoryRepository;
 
@@ -16,14 +18,18 @@ public class InventoryService {
         this.inventoryRepository = inventoryRepository;
     }
 
-    // Create inventory
+    // ==========================================
+    // CREATE INVENTORY
+    // ==========================================
+
     @Transactional
     public InventoryResponse createInventory(
             String productId,
             Integer availableQuantity) {
 
         if (inventoryRepository.existsByProductId(productId)) {
-            throw new RuntimeException(
+
+            throw new InventoryAlreadyExistsException(
                     "Inventory already exists for product: " + productId
             );
         }
@@ -37,7 +43,10 @@ public class InventoryService {
         return convertToResponse(savedInventory);
     }
 
-    // Get inventory by product ID
+    // ==========================================
+    // GET INVENTORY
+    // ==========================================
+
     @Transactional(readOnly = true)
     public InventoryResponse getInventoryByProductId(
             String productId) {
@@ -46,7 +55,7 @@ public class InventoryService {
                 inventoryRepository
                         .findByProductId(productId)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new InventoryNotFoundException(
                                         "Inventory not found for product: "
                                                 + productId
                                 )
@@ -55,7 +64,10 @@ public class InventoryService {
         return convertToResponse(inventory);
     }
 
-    // Update available stock
+    // ==========================================
+    // UPDATE INVENTORY
+    // ==========================================
+
     @Transactional
     public InventoryResponse updateInventory(
             String productId,
@@ -65,13 +77,14 @@ public class InventoryService {
                 inventoryRepository
                         .findByProductId(productId)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new InventoryNotFoundException(
                                         "Inventory not found for product: "
                                                 + productId
                                 )
                         );
 
         inventory.setAvailableQuantity(availableQuantity);
+
         inventory.setUpdatedAt(
                 java.time.LocalDateTime.now()
         );
@@ -82,7 +95,10 @@ public class InventoryService {
         return convertToResponse(updatedInventory);
     }
 
-    // Reserve stock
+    // ==========================================
+    // RESERVE STOCK
+    // ==========================================
+
     @Transactional
     public InventoryResponse reserveStock(
             String productId,
@@ -92,14 +108,15 @@ public class InventoryService {
                 inventoryRepository
                         .findByProductId(productId)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new InventoryNotFoundException(
                                         "Inventory not found for product: "
                                                 + productId
                                 )
                         );
 
         if (inventory.getAvailableQuantity() < quantity) {
-            throw new RuntimeException(
+
+            throw new IllegalArgumentException(
                     "Insufficient stock"
             );
         }
@@ -122,7 +139,10 @@ public class InventoryService {
         return convertToResponse(updatedInventory);
     }
 
-    // Release reserved stock
+    // ==========================================
+    // RELEASE STOCK
+    // ==========================================
+
     @Transactional
     public InventoryResponse releaseStock(
             String productId,
@@ -132,14 +152,15 @@ public class InventoryService {
                 inventoryRepository
                         .findByProductId(productId)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new InventoryNotFoundException(
                                         "Inventory not found for product: "
                                                 + productId
                                 )
                         );
 
         if (inventory.getReservedQuantity() < quantity) {
-            throw new RuntimeException(
+
+            throw new IllegalArgumentException(
                     "Cannot release more than reserved quantity"
             );
         }
@@ -162,7 +183,10 @@ public class InventoryService {
         return convertToResponse(updatedInventory);
     }
 
-    // Convert Entity -> DTO
+    // ==========================================
+    // CONVERT ENTITY -> DTO
+    // ==========================================
+
     private InventoryResponse convertToResponse(
             Inventory inventory) {
 

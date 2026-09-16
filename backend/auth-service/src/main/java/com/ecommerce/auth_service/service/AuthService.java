@@ -6,6 +6,8 @@ import com.ecommerce.auth_service.dto.RegisterRequest;
 import com.ecommerce.auth_service.entity.User;
 import com.ecommerce.auth_service.repository.UserRepository;
 
+import io.jsonwebtoken.JwtException;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -28,15 +30,15 @@ public class AuthService {
         this.jwtService = jwtService;
     }
 
-    // =========================
+    // ==========================================
     // REGISTER
-    // =========================
+    // ==========================================
 
     public User register(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
 
-            throw new RuntimeException(
+            throw new IllegalArgumentException(
                     "Email already registered"
             );
         }
@@ -58,16 +60,16 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    // =========================
+    // ==========================================
     // LOGIN
-    // =========================
+    // ==========================================
 
     public LoginResponse login(LoginRequest request) {
 
         User user = userRepository
                 .findByEmail(request.getEmail())
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new IllegalArgumentException(
                                 "Invalid email or password"
                         )
                 );
@@ -80,7 +82,7 @@ public class AuthService {
 
         if (!passwordMatches) {
 
-            throw new RuntimeException(
+            throw new IllegalArgumentException(
                     "Invalid email or password"
             );
         }
@@ -101,9 +103,9 @@ public class AuthService {
         );
     }
 
-    // =========================
+    // ==========================================
     // EXTRACT TOKEN
-    // =========================
+    // ==========================================
 
     public String extractToken(
             String authorizationHeader) {
@@ -113,25 +115,34 @@ public class AuthService {
         );
     }
 
-    // =========================
+    // ==========================================
+    // VALIDATE TOKEN
+    // ==========================================
+
+    public boolean isTokenValid(String token) {
+
+        return jwtService.isTokenValid(token);
+    }
+
+    // ==========================================
     // EXTRACT USER ID
-    // =========================
+    // ==========================================
 
     public UUID extractUserId(String token) {
 
         return jwtService.extractUserId(token);
     }
 
-    // =========================
+    // ==========================================
     // GET USER BY ID
-    // =========================
+    // ==========================================
 
     public User getUserById(UUID userId) {
 
         return userRepository
                 .findById(userId)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new IllegalArgumentException(
                                 "User not found"
                         )
                 );

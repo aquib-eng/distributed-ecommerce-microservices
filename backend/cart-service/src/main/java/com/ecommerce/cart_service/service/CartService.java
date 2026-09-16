@@ -2,6 +2,7 @@ package com.ecommerce.cart_service.service;
 
 import com.ecommerce.cart_service.dto.CartItemResponse;
 import com.ecommerce.cart_service.dto.CartResponse;
+import com.ecommerce.cart_service.exception.CartNotFoundException;
 import com.ecommerce.cart_service.model.Cart;
 import com.ecommerce.cart_service.model.CartItem;
 import com.ecommerce.cart_service.repository.CartItemRepository;
@@ -43,12 +44,6 @@ public class CartService {
 
     /*
      * Convert Cart Entity to CartResponse DTO.
-     *
-     * This prevents:
-     *
-     * Cart -> CartItem -> Cart -> CartItem
-     *
-     * recursive JSON.
      */
     private CartResponse convertToResponse(Cart cart) {
 
@@ -74,7 +69,7 @@ public class CartService {
     }
 
     /*
-     * Get cart for a user.
+     * Get cart.
      */
     @Transactional
     public CartResponse getCart(UUID userId) {
@@ -85,13 +80,7 @@ public class CartService {
     }
 
     /*
-     * Add a product to the user's cart.
-     *
-     * If the product already exists:
-     * quantity is increased.
-     *
-     * Otherwise:
-     * a new CartItem is created.
+     * Add item.
      */
     @Transactional
     public CartResponse addItem(
@@ -140,7 +129,7 @@ public class CartService {
     }
 
     /*
-     * Update quantity of an existing product.
+     * Update item quantity.
      */
     @Transactional
     public CartResponse updateItemQuantity(
@@ -157,8 +146,9 @@ public class CartService {
                                 productId
                         )
                         .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Product not found in cart"
+                                new CartNotFoundException(
+                                        "Product not found in cart: "
+                                                + productId
                                 )
                         );
 
@@ -170,7 +160,7 @@ public class CartService {
     }
 
     /*
-     * Remove one product from the cart.
+     * Remove one product.
      */
     @Transactional
     public void removeItem(
@@ -186,8 +176,9 @@ public class CartService {
                                 productId
                         )
                         .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Product not found in cart"
+                                new CartNotFoundException(
+                                        "Product not found in cart: "
+                                                + productId
                                 )
                         );
 
@@ -197,7 +188,7 @@ public class CartService {
     }
 
     /*
-     * Remove all items from the user's cart.
+     * Clear entire cart.
      */
     @Transactional
     public void clearCart(UUID userId) {
