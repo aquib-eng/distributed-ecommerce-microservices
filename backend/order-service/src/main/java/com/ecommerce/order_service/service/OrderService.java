@@ -4,11 +4,13 @@ import com.ecommerce.order_service.dto.CreateOrderRequest;
 import com.ecommerce.order_service.dto.OrderItemRequest;
 import com.ecommerce.order_service.dto.OrderItemResponse;
 import com.ecommerce.order_service.dto.OrderResponse;
+import com.ecommerce.order_service.event.OrderCreatedEvent;
 import com.ecommerce.order_service.exception.OrderNotFoundException;
 import com.ecommerce.order_service.model.Order;
 import com.ecommerce.order_service.model.OrderItem;
 import com.ecommerce.order_service.repository.OrderRepository;
 
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,9 +21,14 @@ import java.util.UUID;
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    public OrderService(OrderRepository orderRepository) {
+    public OrderService(
+            OrderRepository orderRepository,
+            KafkaTemplate<String, Object> kafkaTemplate
+    ) {
         this.orderRepository = orderRepository;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     // CREATE ORDER
@@ -54,7 +61,18 @@ public class OrderService {
 
         order.setTotalAmount(totalAmount);
 
+        // Save order to PostgreSQL
         Order savedOrder = orderRepository.save(order);
+
+        // Create Kafka event
+        OrderCreatedEvent event = new OrderCreatedEvent(
+                savedOrder.getOrderId(),
+                savedOrder.getUserId(),
+                savedOrder.getTotalAmount()
+        );
+
+        // Publish event to Kafka
+        kafkaTemplate.send("order-created", event);
 
         return convertToResponse(savedOrder);
     }
