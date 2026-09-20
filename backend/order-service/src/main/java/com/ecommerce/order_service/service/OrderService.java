@@ -5,6 +5,7 @@ import com.ecommerce.order_service.dto.OrderItemRequest;
 import com.ecommerce.order_service.dto.OrderItemResponse;
 import com.ecommerce.order_service.dto.OrderResponse;
 import com.ecommerce.order_service.event.OrderCreatedEvent;
+import com.ecommerce.order_service.event.OrderItemEvent;
 import com.ecommerce.order_service.exception.OrderNotFoundException;
 import com.ecommerce.order_service.model.Order;
 import com.ecommerce.order_service.model.OrderItem;
@@ -64,11 +65,22 @@ public class OrderService {
         // Save order to PostgreSQL
         Order savedOrder = orderRepository.save(order);
 
+        // Convert order items into Kafka event items
+        List<OrderItemEvent> itemEvents =
+                savedOrder.getItems()
+                        .stream()
+                        .map(item -> new OrderItemEvent(
+                                item.getProductId(),
+                                item.getQuantity()
+                        ))
+                        .toList();
+
         // Create Kafka event
         OrderCreatedEvent event = new OrderCreatedEvent(
                 savedOrder.getOrderId(),
                 savedOrder.getUserId(),
-                savedOrder.getTotalAmount()
+                savedOrder.getTotalAmount(),
+                itemEvents
         );
 
         // Publish event to Kafka
@@ -178,3 +190,4 @@ public class OrderService {
         );
     }
 }
+
