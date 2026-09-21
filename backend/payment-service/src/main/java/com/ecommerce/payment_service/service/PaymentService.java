@@ -1,3 +1,4 @@
+
 package com.ecommerce.payment_service.service;
 
 import com.ecommerce.payment_service.dto.PaymentResponse;
@@ -44,6 +45,21 @@ public class PaymentService {
             );
         }
 
+        // ==========================================
+        // SIMULATED PAYMENT FAILURE
+        // ==========================================
+
+        if ("FAIL".equalsIgnoreCase(paymentMethod)) {
+
+            throw new IllegalArgumentException(
+                    "Simulated payment failure"
+            );
+        }
+
+        // ==========================================
+        // SUCCESSFUL PAYMENT
+        // ==========================================
+
         // Generate transaction ID
         String transactionId =
                 "TXN-" +
@@ -52,11 +68,6 @@ public class PaymentService {
                         .substring(0, 8)
                         .toUpperCase();
 
-        /*
-         * Simulated payment.
-         *
-         * For now every valid payment succeeds.
-         */
         Payment payment = new Payment(
                 orderId,
                 userId,
@@ -103,7 +114,7 @@ public class PaymentService {
                                 new PaymentNotFoundException(
                                         "Payment not found for order: "
                                                 + orderId
-                                )
+                        )
                         );
 
         return convertToResponse(payment);
@@ -176,3 +187,4 @@ public class PaymentService {
         );
     }
 }
+

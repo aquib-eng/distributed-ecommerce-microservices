@@ -3,28 +3,28 @@ package com.ecommerce.inventory_service.event;
 import java.util.List;
 import java.util.UUID;
 
-public class OrderCreatedEvent {
+public class OrderCancelledEvent {
 
     private UUID orderId;
     private UUID userId;
-    private Double totalAmount;
-    private String paymentMethod;
+    private Double amount;
+    private String reason;
     private List<OrderItemEvent> items;
 
-    public OrderCreatedEvent() {
+    public OrderCancelledEvent() {
     }
 
-    public OrderCreatedEvent(
+    public OrderCancelledEvent(
             UUID orderId,
             UUID userId,
-            Double totalAmount,
-            String paymentMethod,
+            Double amount,
+            String reason,
             List<OrderItemEvent> items
     ) {
         this.orderId = orderId;
         this.userId = userId;
-        this.totalAmount = totalAmount;
-        this.paymentMethod = paymentMethod;
+        this.amount = amount;
+        this.reason = reason;
         this.items = items;
     }
 
@@ -44,20 +44,20 @@ public class OrderCreatedEvent {
         this.userId = userId;
     }
 
-    public Double getTotalAmount() {
-        return totalAmount;
+    public Double getAmount() {
+        return amount;
     }
 
-    public void setTotalAmount(Double totalAmount) {
-        this.totalAmount = totalAmount;
+    public void setAmount(Double amount) {
+        this.amount = amount;
     }
 
-    public String getPaymentMethod() {
-        return paymentMethod;
+    public String getReason() {
+        return reason;
     }
 
-    public void setPaymentMethod(String paymentMethod) {
-        this.paymentMethod = paymentMethod;
+    public void setReason(String reason) {
+        this.reason = reason;
     }
 
     public List<OrderItemEvent> getItems() {

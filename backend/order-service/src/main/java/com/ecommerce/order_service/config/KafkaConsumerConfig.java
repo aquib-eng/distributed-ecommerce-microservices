@@ -1,7 +1,8 @@
-package com.ecommerce.inventory_service.config;
 
-import com.ecommerce.inventory_service.event.OrderCancelledEvent;
-import com.ecommerce.inventory_service.event.OrderCreatedEvent;
+package com.ecommerce.order_service.config;
+
+import com.ecommerce.order_service.event.PaymentFailedEvent;
+import com.ecommerce.order_service.event.PaymentSuccessfulEvent;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -11,11 +12,14 @@ import org.springframework.context.annotation.Configuration;
 
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import org.springframework.kafka.listener.DefaultErrorHandler;
+
+import org.springframework.kafka.support.serializer.JsonDeserializer;
+
 import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
@@ -25,17 +29,22 @@ import java.util.Map;
 @EnableKafka
 public class KafkaConsumerConfig {
 
-    // ======================================================
-    // COMMON KAFKA CONSUMER CONFIGURATION
-    // ======================================================
+    // ==========================================
+    // COMMON CONSUMER CONFIGURATION
+    // ==========================================
 
-    private Map<String, Object> consumerConfigs() {
+    private Map<String, Object> consumerConfig() {
 
         Map<String, Object> config = new HashMap<>();
 
         config.put(
                 ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
                 "localhost:9092"
+        );
+
+        config.put(
+                ConsumerConfig.GROUP_ID_CONFIG,
+                "order-service"
         );
 
         config.put(
@@ -51,35 +60,26 @@ public class KafkaConsumerConfig {
         return config;
     }
 
-    // ======================================================
-    // ORDER CREATED CONSUMER
-    // ======================================================
+    // ==========================================
+    // PAYMENT SUCCESSFUL CONSUMER
+    // ==========================================
 
     @Bean
-    public ConsumerFactory<String, OrderCreatedEvent>
-            orderCreatedConsumerFactory() {
+    public ConsumerFactory<String, PaymentSuccessfulEvent>
+            paymentSuccessfulConsumerFactory() {
 
         Map<String, Object> config =
-                consumerConfigs();
+                consumerConfig();
 
-        config.put(
-                ConsumerConfig.GROUP_ID_CONFIG,
-                "inventory-service"
-        );
-
-        JsonDeserializer<OrderCreatedEvent> deserializer =
+        JsonDeserializer<PaymentSuccessfulEvent> deserializer =
                 new JsonDeserializer<>(
-                        OrderCreatedEvent.class
+                        PaymentSuccessfulEvent.class
                 );
 
         deserializer.addTrustedPackages(
-                "com.ecommerce.inventory_service.event"
+                "com.ecommerce.order_service.event"
         );
 
-        /*
-         * Use Inventory Service's local event class
-         * instead of the producer's Java class name.
-         */
         deserializer.setUseTypeHeaders(false);
 
         return new DefaultKafkaConsumerFactory<>(
@@ -89,24 +89,19 @@ public class KafkaConsumerConfig {
         );
     }
 
-    // ======================================================
-    // ORDER CREATED LISTENER CONTAINER
-    // ======================================================
-
-    @Bean
+    @Bean(name = "paymentSuccessfulKafkaListenerContainerFactory")
     public ConcurrentKafkaListenerContainerFactory<
             String,
-            OrderCreatedEvent
-            > kafkaListenerContainerFactory() {
+            PaymentSuccessfulEvent>
+            paymentSuccessfulKafkaListenerContainerFactory() {
 
         ConcurrentKafkaListenerContainerFactory<
                 String,
-                OrderCreatedEvent
-                > factory =
+                PaymentSuccessfulEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
 
         factory.setConsumerFactory(
-                orderCreatedConsumerFactory()
+                paymentSuccessfulConsumerFactory()
         );
 
         factory.setCommonErrorHandler(
@@ -116,35 +111,26 @@ public class KafkaConsumerConfig {
         return factory;
     }
 
-    // ======================================================
-    // ORDER CANCELLED CONSUMER
-    // ======================================================
+    // ==========================================
+    // PAYMENT FAILED CONSUMER
+    // ==========================================
 
     @Bean
-    public ConsumerFactory<String, OrderCancelledEvent>
-            orderCancelledConsumerFactory() {
+    public ConsumerFactory<String, PaymentFailedEvent>
+            paymentFailedConsumerFactory() {
 
         Map<String, Object> config =
-                consumerConfigs();
+                consumerConfig();
 
-        config.put(
-                ConsumerConfig.GROUP_ID_CONFIG,
-                "inventory-cancellation-service"
-        );
-
-        JsonDeserializer<OrderCancelledEvent> deserializer =
+        JsonDeserializer<PaymentFailedEvent> deserializer =
                 new JsonDeserializer<>(
-                        OrderCancelledEvent.class
+                        PaymentFailedEvent.class
                 );
 
         deserializer.addTrustedPackages(
-                "com.ecommerce.inventory_service.event"
+                "com.ecommerce.order_service.event"
         );
 
-        /*
-         * Use Inventory Service's local event class
-         * instead of the producer's Java class name.
-         */
         deserializer.setUseTypeHeaders(false);
 
         return new DefaultKafkaConsumerFactory<>(
@@ -154,24 +140,19 @@ public class KafkaConsumerConfig {
         );
     }
 
-    // ======================================================
-    // ORDER CANCELLED LISTENER CONTAINER
-    // ======================================================
-
-    @Bean
+    @Bean(name = "paymentFailedKafkaListenerContainerFactory")
     public ConcurrentKafkaListenerContainerFactory<
             String,
-            OrderCancelledEvent
-            > orderCancelledKafkaListenerContainerFactory() {
+            PaymentFailedEvent>
+            paymentFailedKafkaListenerContainerFactory() {
 
         ConcurrentKafkaListenerContainerFactory<
                 String,
-                OrderCancelledEvent
-                > factory =
+                PaymentFailedEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
 
         factory.setConsumerFactory(
-                orderCancelledConsumerFactory()
+                paymentFailedConsumerFactory()
         );
 
         factory.setCommonErrorHandler(
@@ -181,20 +162,13 @@ public class KafkaConsumerConfig {
         return factory;
     }
 
-    // ======================================================
+    // ==========================================
     // KAFKA ERROR HANDLER
-    // ======================================================
+    // ==========================================
 
     @Bean
     public DefaultErrorHandler kafkaErrorHandler() {
 
-        /*
-         * No retry.
-         *
-         * If the listener throws an exception,
-         * Kafka will not repeatedly retry the
-         * same message.
-         */
         FixedBackOff fixedBackOff =
                 new FixedBackOff(0L, 0L);
 
@@ -203,3 +177,4 @@ public class KafkaConsumerConfig {
         );
     }
 }
+

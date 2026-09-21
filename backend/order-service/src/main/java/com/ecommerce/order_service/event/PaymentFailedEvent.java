@@ -1,31 +1,31 @@
-package com.ecommerce.inventory_service.event;
 
-import java.util.List;
+package com.ecommerce.order_service.event;
+
 import java.util.UUID;
 
-public class OrderCreatedEvent {
+public class PaymentFailedEvent {
 
     private UUID orderId;
     private UUID userId;
-    private Double totalAmount;
+    private Double amount;
     private String paymentMethod;
-    private List<OrderItemEvent> items;
+    private String reason;
 
-    public OrderCreatedEvent() {
+    public PaymentFailedEvent() {
     }
 
-    public OrderCreatedEvent(
+    public PaymentFailedEvent(
             UUID orderId,
             UUID userId,
-            Double totalAmount,
+            Double amount,
             String paymentMethod,
-            List<OrderItemEvent> items
+            String reason
     ) {
         this.orderId = orderId;
         this.userId = userId;
-        this.totalAmount = totalAmount;
+        this.amount = amount;
         this.paymentMethod = paymentMethod;
-        this.items = items;
+        this.reason = reason;
     }
 
     public UUID getOrderId() {
@@ -44,12 +44,12 @@ public class OrderCreatedEvent {
         this.userId = userId;
     }
 
-    public Double getTotalAmount() {
-        return totalAmount;
+    public Double getAmount() {
+        return amount;
     }
 
-    public void setTotalAmount(Double totalAmount) {
-        this.totalAmount = totalAmount;
+    public void setAmount(Double amount) {
+        this.amount = amount;
     }
 
     public String getPaymentMethod() {
@@ -60,11 +60,12 @@ public class OrderCreatedEvent {
         this.paymentMethod = paymentMethod;
     }
 
-    public List<OrderItemEvent> getItems() {
-        return items;
+    public String getReason() {
+        return reason;
     }
 
-    public void setItems(List<OrderItemEvent> items) {
-        this.items = items;
+    public void setReason(String reason) {
+        this.reason = reason;
     }
 }
+

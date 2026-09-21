@@ -1,31 +1,27 @@
-package com.ecommerce.inventory_service.event;
+package com.ecommerce.payment_service.event;
 
-import java.util.List;
 import java.util.UUID;
 
-public class OrderCreatedEvent {
+public class PaymentProcessEvent {
 
     private UUID orderId;
     private UUID userId;
-    private Double totalAmount;
+    private Double amount;
     private String paymentMethod;
-    private List<OrderItemEvent> items;
 
-    public OrderCreatedEvent() {
+    public PaymentProcessEvent() {
     }
 
-    public OrderCreatedEvent(
+    public PaymentProcessEvent(
             UUID orderId,
             UUID userId,
-            Double totalAmount,
-            String paymentMethod,
-            List<OrderItemEvent> items
+            Double amount,
+            String paymentMethod
     ) {
         this.orderId = orderId;
         this.userId = userId;
-        this.totalAmount = totalAmount;
+        this.amount = amount;
         this.paymentMethod = paymentMethod;
-        this.items = items;
     }
 
     public UUID getOrderId() {
@@ -44,12 +40,12 @@ public class OrderCreatedEvent {
         this.userId = userId;
     }
 
-    public Double getTotalAmount() {
-        return totalAmount;
+    public Double getAmount() {
+        return amount;
     }
 
-    public void setTotalAmount(Double totalAmount) {
-        this.totalAmount = totalAmount;
+    public void setAmount(Double amount) {
+        this.amount = amount;
     }
 
     public String getPaymentMethod() {
@@ -58,13 +54,5 @@ public class OrderCreatedEvent {
 
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
-    }
-
-    public List<OrderItemEvent> getItems() {
-        return items;
-    }
-
-    public void setItems(List<OrderItemEvent> items) {
-        this.items = items;
     }
 }

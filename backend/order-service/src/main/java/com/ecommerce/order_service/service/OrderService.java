@@ -32,7 +32,9 @@ public class OrderService {
         this.kafkaTemplate = kafkaTemplate;
     }
 
+    // ======================================================
     // CREATE ORDER
+    // ======================================================
     @Transactional
     public OrderResponse createOrder(
             UUID userId,
@@ -80,6 +82,7 @@ public class OrderService {
                 savedOrder.getOrderId(),
                 savedOrder.getUserId(),
                 savedOrder.getTotalAmount(),
+                request.getPaymentMethod(),
                 itemEvents
         );
 
@@ -90,7 +93,9 @@ public class OrderService {
     }
 
 
+    // ======================================================
     // GET ALL USER ORDERS
+    // ======================================================
     @Transactional(readOnly = true)
     public List<OrderResponse> getUserOrders(UUID userId) {
 
@@ -101,7 +106,9 @@ public class OrderService {
     }
 
 
+    // ======================================================
     // GET SINGLE ORDER
+    // ======================================================
     @Transactional(readOnly = true)
     public OrderResponse getOrder(
             UUID userId,
@@ -120,7 +127,9 @@ public class OrderService {
     }
 
 
-    // CANCEL ORDER
+    // ======================================================
+    // CANCEL ORDER - USER REQUEST
+    // ======================================================
     @Transactional
     public OrderResponse cancelOrder(
             UUID userId,
@@ -135,7 +144,6 @@ public class OrderService {
                         )
                 );
 
-
         // Already cancelled
         if ("CANCELLED".equals(order.getStatus())) {
 
@@ -144,7 +152,6 @@ public class OrderService {
             );
         }
 
-
         // Confirmed orders cannot be cancelled
         if ("CONFIRMED".equals(order.getStatus())) {
 
@@ -152,7 +159,6 @@ public class OrderService {
                     "Confirmed order cannot be cancelled"
             );
         }
-
 
         order.setStatus("CANCELLED");
 
@@ -163,7 +169,109 @@ public class OrderService {
     }
 
 
+    // ======================================================
+    // CONFIRM ORDER - PAYMENT SUCCESS
+    // Called by Kafka PaymentSuccessfulEvent listener
+    // ======================================================
+    @Transactional
+    public void confirmOrder(UUID orderId) {
+
+        Order order = orderRepository
+                .findById(orderId)
+                .orElseThrow(() ->
+                        new OrderNotFoundException(
+                                "Order not found with id: " + orderId
+                        )
+                );
+
+        // Already confirmed
+        if ("CONFIRMED".equals(order.getStatus())) {
+
+            System.out.println(
+                    "Order is already confirmed: " +
+                    orderId
+            );
+
+            return;
+        }
+
+        // Cancelled order cannot become confirmed
+        if ("CANCELLED".equals(order.getStatus())) {
+
+            System.out.println(
+                    "Cancelled order cannot be confirmed: " +
+                    orderId
+            );
+
+            return;
+        }
+
+        // Change order status
+        order.setStatus("CONFIRMED");
+
+        orderRepository.save(order);
+
+        System.out.println(
+                "Order confirmed successfully: " +
+                orderId
+        );
+    }
+
+
+    // ======================================================
+    // CANCEL ORDER - PAYMENT FAILURE
+    // Called by Kafka PaymentFailedEvent listener
+    // ======================================================
+    @Transactional
+    public void cancelOrderFromPaymentFailure(
+            UUID orderId
+    ) {
+
+        Order order = orderRepository
+                .findById(orderId)
+                .orElseThrow(() ->
+                        new OrderNotFoundException(
+                                "Order not found with id: " + orderId
+                        )
+                );
+
+        // Already cancelled
+        if ("CANCELLED".equals(order.getStatus())) {
+
+            System.out.println(
+                    "Order is already cancelled: " +
+                    orderId
+            );
+
+            return;
+        }
+
+        // Confirmed order cannot be cancelled
+        if ("CONFIRMED".equals(order.getStatus())) {
+
+            System.out.println(
+                    "Confirmed order cannot be cancelled: " +
+                    orderId
+            );
+
+            return;
+        }
+
+        // Change order status
+        order.setStatus("CANCELLED");
+
+        orderRepository.save(order);
+
+        System.out.println(
+                "Order cancelled because payment failed: " +
+                orderId
+        );
+    }
+
+
+    // ======================================================
     // CONVERT ENTITY → RESPONSE
+    // ======================================================
     private OrderResponse convertToResponse(Order order) {
 
         List<OrderItemResponse> items =
@@ -190,4 +298,3 @@ public class OrderService {
         );
     }
 }
-

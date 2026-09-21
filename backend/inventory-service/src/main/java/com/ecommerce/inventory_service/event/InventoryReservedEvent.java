@@ -1,31 +1,33 @@
 package com.ecommerce.inventory_service.event;
 
-import java.util.List;
 import java.util.UUID;
 
-public class OrderCreatedEvent {
+public class InventoryReservedEvent {
 
     private UUID orderId;
     private UUID userId;
-    private Double totalAmount;
+    private Double amount;
     private String paymentMethod;
-    private List<OrderItemEvent> items;
+    private String productId;
+    private Integer quantity;
 
-    public OrderCreatedEvent() {
+    public InventoryReservedEvent() {
     }
 
-    public OrderCreatedEvent(
+    public InventoryReservedEvent(
             UUID orderId,
             UUID userId,
-            Double totalAmount,
+            Double amount,
             String paymentMethod,
-            List<OrderItemEvent> items
+            String productId,
+            Integer quantity
     ) {
         this.orderId = orderId;
         this.userId = userId;
-        this.totalAmount = totalAmount;
+        this.amount = amount;
         this.paymentMethod = paymentMethod;
-        this.items = items;
+        this.productId = productId;
+        this.quantity = quantity;
     }
 
     public UUID getOrderId() {
@@ -44,12 +46,12 @@ public class OrderCreatedEvent {
         this.userId = userId;
     }
 
-    public Double getTotalAmount() {
-        return totalAmount;
+    public Double getAmount() {
+        return amount;
     }
 
-    public void setTotalAmount(Double totalAmount) {
-        this.totalAmount = totalAmount;
+    public void setAmount(Double amount) {
+        this.amount = amount;
     }
 
     public String getPaymentMethod() {
@@ -60,11 +62,19 @@ public class OrderCreatedEvent {
         this.paymentMethod = paymentMethod;
     }
 
-    public List<OrderItemEvent> getItems() {
-        return items;
+    public String getProductId() {
+        return productId;
     }
 
-    public void setItems(List<OrderItemEvent> items) {
-        this.items = items;
+    public void setProductId(String productId) {
+        this.productId = productId;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
     }
 }

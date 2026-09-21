@@ -1,31 +1,42 @@
+
 package com.ecommerce.order_service.event;
 
-import java.util.List;
 import java.util.UUID;
 
-public class OrderCreatedEvent {
+public class PaymentSuccessfulEvent {
 
+    private UUID paymentId;
     private UUID orderId;
     private UUID userId;
-    private Double totalAmount;
+    private Double amount;
     private String paymentMethod;
-    private List<OrderItemEvent> items;
+    private String transactionId;
 
-    public OrderCreatedEvent() {
+    public PaymentSuccessfulEvent() {
     }
 
-    public OrderCreatedEvent(
+    public PaymentSuccessfulEvent(
+            UUID paymentId,
             UUID orderId,
             UUID userId,
-            Double totalAmount,
+            Double amount,
             String paymentMethod,
-            List<OrderItemEvent> items
+            String transactionId
     ) {
+        this.paymentId = paymentId;
         this.orderId = orderId;
         this.userId = userId;
-        this.totalAmount = totalAmount;
+        this.amount = amount;
         this.paymentMethod = paymentMethod;
-        this.items = items;
+        this.transactionId = transactionId;
+    }
+
+    public UUID getPaymentId() {
+        return paymentId;
+    }
+
+    public void setPaymentId(UUID paymentId) {
+        this.paymentId = paymentId;
     }
 
     public UUID getOrderId() {
@@ -44,12 +55,12 @@ public class OrderCreatedEvent {
         this.userId = userId;
     }
 
-    public Double getTotalAmount() {
-        return totalAmount;
+    public Double getAmount() {
+        return amount;
     }
 
-    public void setTotalAmount(Double totalAmount) {
-        this.totalAmount = totalAmount;
+    public void setAmount(Double amount) {
+        this.amount = amount;
     }
 
     public String getPaymentMethod() {
@@ -60,11 +71,12 @@ public class OrderCreatedEvent {
         this.paymentMethod = paymentMethod;
     }
 
-    public List<OrderItemEvent> getItems() {
-        return items;
+    public String getTransactionId() {
+        return transactionId;
     }
 
-    public void setItems(List<OrderItemEvent> items) {
-        this.items = items;
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
     }
 }
+
