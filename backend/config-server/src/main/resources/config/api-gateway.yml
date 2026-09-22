@@ -9,6 +9,7 @@ spring:
     gateway:
       server:
         webflux:
+
           discovery:
             locator:
               enabled: false
@@ -46,6 +47,11 @@ spring:
               predicates:
                 - Path=/api/payments/**
 
+            - id: notification-service
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/notifications/**
+                
 eureka:
   client:
     service-url:
