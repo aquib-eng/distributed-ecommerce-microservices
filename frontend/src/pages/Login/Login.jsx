@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
 
@@ -7,39 +7,68 @@ import styles from "./Login.module.css";
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { login } = useAuth();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
 
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+
+    setFormData((previousData) => ({
+      ...previousData,
+      [name]: value,
+    }));
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     setError("");
-
-    if (!email || !password) {
-      setError("Please enter email and password.");
-      return;
-    }
+    setLoading(true);
 
     try {
-      setLoading(true);
+      await login(
+        formData.email,
+        formData.password
+      );
 
-      await login(email, password);
+      /*
+       * If the user was redirected to login from a
+       * protected page, return them to that page.
+       *
+       * Otherwise, go to Home.
+       */
+      const from =
+        location.state?.from?.pathname || "/";
 
-      navigate("/products");
+      const search =
+        location.state?.from?.search || "";
+
+      const hash =
+        location.state?.from?.hash || "";
+
+      navigate(
+        `${from}${search}${hash}`,
+        {
+          replace: true,
+        }
+      );
     } catch (error) {
       console.error("Login failed:", error);
 
-      if (error.response?.data?.message) {
-        setError(error.response.data.message);
-      } else {
-        setError("Login failed. Please check your email and password.");
-      }
+      setError(
+        error.response?.data?.message ||
+          error.message ||
+          "Login failed. Please check your email and password."
+      );
     } finally {
       setLoading(false);
     }
@@ -47,84 +76,83 @@ function Login() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.container}>
 
-      <div className={styles.card}>
+        <div className={styles.card}>
 
-        <h1 className={styles.title}>
-          Login
-        </h1>
+          <div className={styles.header}>
+            <h1>Login</h1>
 
-        <p className={styles.subtitle}>
-          Login to your account
-        </p>
-
-        {error && (
-          <div className={styles.error}>
-            {error}
-          </div>
-        )}
-
-        <form
-          className={styles.form}
-          onSubmit={handleSubmit}
-        >
-
-          <div className={styles.field}>
-
-            <label htmlFor="email">
-              Email
-            </label>
-
-            <input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(event) =>
-                setEmail(event.target.value)
-              }
-            />
-
+            <p>
+              Login to access your account.
+            </p>
           </div>
 
-          <div className={styles.field}>
+          {error && (
+            <div className={styles.error}>
+              {error}
+            </div>
+          )}
 
-            <label htmlFor="password">
-              Password
-            </label>
+          <form onSubmit={handleSubmit}>
 
-            <input
-              id="password"
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(event) =>
-                setPassword(event.target.value)
-              }
-            />
+            <div className={styles.formGroup}>
+              <label htmlFor="email">
+                Email
+              </label>
 
+              <input
+                id="email"
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="password">
+                Password
+              </label>
+
+              <input
+                id="password"
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Enter your password"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className={styles.loginButton}
+              disabled={loading}
+            >
+              {loading ? "Logging in..." : "Login"}
+            </button>
+
+          </form>
+
+          <div className={styles.registerText}>
+            Don't have an account?
+
+            <button
+              type="button"
+              className={styles.registerLink}
+              onClick={() => navigate("/register")}
+            >
+              Register
+            </button>
           </div>
 
-          <button
-            type="submit"
-            className={styles.button}
-            disabled={loading}
-          >
-            {loading ? "Logging in..." : "Login"}
-          </button>
-
-        </form>
-
-        <p className={styles.registerText}>
-          Don't have an account?{" "}
-
-          <Link to="/register">
-            Register
-          </Link>
-        </p>
+        </div>
 
       </div>
-
     </div>
   );
 }

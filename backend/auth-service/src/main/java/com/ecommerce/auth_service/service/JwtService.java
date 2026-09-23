@@ -21,9 +21,9 @@ public class JwtService {
     private static final String SECRET =
             "my-super-secret-key-for-ecommerce-jwt-authentication-2026";
 
-    // 15 minutes
+    // 24 hours
     private static final long EXPIRATION_TIME =
-            15 * 60 * 1000L;
+            24 * 60 * 60 * 1000L;
 
     private final SecretKey secretKey =
             Keys.hmacShaKeyFor(
