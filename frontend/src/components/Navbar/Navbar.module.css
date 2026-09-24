@@ -1,117 +1,366 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+}
+
+.navbar {
+  width: 100%;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #111827;
+  box-shadow: 0 3px 18px rgba(0, 0, 0, 0.12);
+}
+
+.navContainer {
+  width: min(1200px, calc(100% - 40px));
+  min-height: 70px;
+  margin: 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+}
+
+/* ==============================
+   BRAND
+============================== */
+
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
   color: #ffffff;
+  font-size: 19px;
+  font-weight: 800;
   text-decoration: none;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 
 .brand:hover {
   color: #ffffff;
 }
 
+.brandIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 36px;
+  height: 36px;
+
+  border-radius: 9px;
+
+  background: #0d6efd;
+
+  font-size: 18px;
+}
+
+.brandText {
+  letter-spacing: -0.2px;
+}
+
+/* ==============================
+   NAVIGATION
+============================== */
+
+.navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  gap: 30px;
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .navLink {
-  display: block;
-  color: rgba(255, 255, 255, 0.75);
+  position: relative;
+
+  padding: 25px 11px;
+
+  color: #cbd5e1;
+
+  font-size: 14px;
+  font-weight: 600;
+
   text-decoration: none;
-  padding: 8px 12px;
-  margin: 0 2px;
-  border-radius: 6px;
-  font-size: 15px;
+
   transition:
     color 0.2s ease,
-    background-color 0.2s ease;
+    background 0.2s ease;
 }
 
 .navLink:hover {
   color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.08);
 }
 
-.active {
+.navLink.active {
   color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.15);
-  font-weight: 600;
+}
+
+.navLink.active::after {
+  content: "";
+
+  position: absolute;
+  right: 10px;
+  bottom: 14px;
+  left: 10px;
+
+  height: 2px;
+
+  border-radius: 2px;
+
+  background: #0d6efd;
+}
+
+/* ==============================
+   USER
+============================== */
+
+.userSection {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.userInfo {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+}
+
+.welcomeText {
+  color: #94a3b8;
+  font-size: 11px;
 }
 
 .userName {
-  display: block;
+  max-width: 180px;
+  overflow: hidden;
+
   color: #ffffff;
-  padding: 8px 12px;
-  margin: 0 2px;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 700;
+
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.loginButton {
-  display: block;
-  color: #ffffff;
-  background-color: #0d6efd;
+.authLinks {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loginButton,
+.registerButton,
+.logoutButton {
+  padding: 8px 14px;
+
+  border-radius: 7px;
+
+  font-size: 13px;
+  font-weight: 700;
+
   text-decoration: none;
-  padding: 8px 16px;
-  margin: 4px 4px 4px 8px;
-  border-radius: 6px;
-  font-size: 15px;
-  font-weight: 600;
-  text-align: center;
-  transition: background-color 0.2s ease;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.loginButton {
+  border: 1px solid #475569;
+
+  color: #ffffff;
+  background: transparent;
 }
 
 .loginButton:hover {
+  border-color: #64748b;
+  background: #1e293b;
   color: #ffffff;
-  background-color: #0b5ed7;
 }
 
 .registerButton {
-  display: block;
+  border: 1px solid #0d6efd;
+
+  background: #0d6efd;
   color: #ffffff;
-  background-color: #198754;
-  text-decoration: none;
-  padding: 8px 16px;
-  margin: 4px 0 4px 4px;
-  border-radius: 6px;
-  font-size: 15px;
-  font-weight: 600;
-  text-align: center;
-  transition: background-color 0.2s ease;
 }
 
 .registerButton:hover {
+  background: #0b5ed7;
   color: #ffffff;
-  background-color: #157347;
+  transform: translateY(-1px);
 }
 
 .logoutButton {
-  border: none;
-  color: #ffffff;
-  background-color: #dc3545;
-  padding: 8px 16px;
-  margin: 4px 0 4px 4px;
-  border-radius: 6px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+  border: 1px solid #475569;
+
+  background: transparent;
+  color: #f8fafc;
 }
 
 .logoutButton:hover {
-  background-color: #bb2d3b;
+  border-color: #dc3545;
+  background: #dc3545;
+  color: #ffffff;
 }
 
-@media (max-width: 991px) {
+/* ==============================
+   MOBILE MENU BUTTON
+============================== */
+
+.menuButton {
+  display: none;
+
+  width: 42px;
+  height: 40px;
+
+  padding: 8px;
+
+  border: 1px solid #475569;
+  border-radius: 7px;
+
+  background: transparent;
+
+  cursor: pointer;
+}
+
+.menuButton span {
+  display: block;
+
+  width: 100%;
+  height: 2px;
+
+  margin: 5px 0;
+
+  border-radius: 2px;
+
+  background: #ffffff;
+
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.menuButtonOpen span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.menuButtonOpen span:nth-child(2) {
+  opacity: 0;
+}
+
+.menuButtonOpen span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* ==============================
+   RESPONSIVE
+============================== */
+
+@media (max-width: 900px) {
+  .navContainer {
+    min-height: 64px;
+  }
+
+  .menuButton {
+    display: block;
+  }
+
+  .navigation {
+    position: absolute;
+    top: 64px;
+    right: 0;
+    left: 0;
+
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+
+    padding: 15px;
+
+    border-top: 1px solid #334155;
+
+    background: #111827;
+
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  .navigationOpen {
+    display: flex;
+  }
+
+  .navLinks {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 2px;
+  }
+
   .navLink {
-    margin: 4px 0;
+    padding: 12px 14px;
+    border-radius: 7px;
+  }
+
+  .navLink:hover,
+  .navLink.active {
+    background: #1e293b;
+  }
+
+  .navLink.active::after {
+    display: none;
+  }
+
+  .userSection {
+    align-items: stretch;
+    flex-direction: column;
+    padding-top: 12px;
+    border-top: 1px solid #334155;
+  }
+
+  .userInfo {
+    align-items: flex-start;
   }
 
   .userName {
-    margin: 4px 0;
-    padding-left: 12px;
+    max-width: none;
+  }
+
+  .authLinks {
+    flex-direction: column;
   }
 
   .loginButton,
   .registerButton,
   .logoutButton {
-    display: inline-block;
-    margin: 4px 0;
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 576px) {
+  .navContainer {
+    width: calc(100% - 24px);
+  }
+
+  .brandText {
+    font-size: 16px;
+  }
+
+  .brandIcon {
+    width: 32px;
+    height: 32px;
   }
 }

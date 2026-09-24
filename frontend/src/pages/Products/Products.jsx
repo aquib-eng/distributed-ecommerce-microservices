@@ -8,11 +8,11 @@ import styles from "./Products.module.css";
 function Products() {
   const [products, setProducts] = useState([]);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [category, setCategory] = useState("");
 
   useEffect(() => {
     fetchProducts();
@@ -25,30 +25,23 @@ function Products() {
 
       const response = await api.get("/api/products");
 
-      const data = response.data;
+      console.log("Products response:", response.data);
 
-      if (Array.isArray(data)) {
-        setProducts(data);
-      } else if (Array.isArray(data?.products)) {
-        setProducts(data.products);
-      } else if (Array.isArray(data?.data)) {
-        setProducts(data.data);
-      } else {
-        setProducts([]);
-      }
-    } catch (err) {
-      console.error("Failed to fetch products:", err);
+      const productData = Array.isArray(response.data)
+        ? response.data
+        : response.data?.products ||
+          response.data?.content ||
+          response.data?.data ||
+          [];
 
-      if (err.response?.status === 401) {
-        setError(
-          "You are not authorized to view products. Please login again."
-        );
-      } else {
-        setError(
-          err.response?.data?.message ||
-            "Failed to load products. Please try again."
-        );
-      }
+      setProducts(productData);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+
+      setError(
+        error.response?.data?.message ||
+          "Unable to load products. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -59,183 +52,216 @@ function Products() {
       .map((product) => product.category)
       .filter(Boolean);
 
-    return ["All", ...new Set(uniqueCategories)];
+    return [...new Set(uniqueCategories)].sort();
   }, [products]);
 
   const filteredProducts = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();
 
     return products.filter((product) => {
-      const name = product.name?.toLowerCase() || "";
-      const description = product.description?.toLowerCase() || "";
-      const category = product.category || "";
-
       const matchesSearch =
         !search ||
-        name.includes(search) ||
-        description.includes(search);
+        product.name?.toLowerCase().includes(search) ||
+        product.description?.toLowerCase().includes(search);
 
       const matchesCategory =
-        selectedCategory === "All" ||
-        category === selectedCategory;
+        !category || product.category === category;
 
       return matchesSearch && matchesCategory;
     });
-  }, [products, searchTerm, selectedCategory]);
-
-  const hasActiveFilters =
-    searchTerm.trim() !== "" || selectedCategory !== "All";
+  }, [products, searchTerm, category]);
 
   const clearFilters = () => {
     setSearchTerm("");
-    setSelectedCategory("All");
+    setCategory("");
   };
 
-  const getProductImage = (product) => {
-    return (
-      product.imageUrl ||
-      product.image ||
-      "https://via.placeholder.com/600x400?text=Product"
-    );
+  const getStockQuantity = (product) => {
+    const stockValue =
+      product.stockQuantity ?? product.stock ?? 0;
+
+    const stock = Number(stockValue);
+
+    return Number.isFinite(stock) ? stock : 0;
   };
 
-  const getStockValue = (product) => {
-    if (
-      product.stockQuantity !== null &&
-      product.stockQuantity !== undefined
-    ) {
-      return Number(product.stockQuantity);
-    }
-
-    if (
-      product.stock !== null &&
-      product.stock !== undefined
-    ) {
-      return Number(product.stock);
-    }
-
-    return null;
-  };
-
-  const getStockStatus = (stock) => {
-    if (stock === null) {
-      return "Stock unavailable";
-    }
+  const getStockStatus = (product) => {
+    const stock = getStockQuantity(product);
 
     if (stock <= 0) {
-      return "Out of stock";
+      return {
+        label: "Out of stock",
+        className: styles.outOfStock,
+      };
     }
 
     if (stock <= 5) {
-      return `Only ${stock} left`;
+      return {
+        label: `Only ${stock} left`,
+        className: styles.lowStock,
+      };
     }
 
-    return `${stock} in stock`;
+    return {
+      label: `${stock} in stock`,
+      className: styles.inStock,
+    };
   };
 
-  const getStockClass = (stock) => {
-    if (stock === null || stock <= 0) {
-      return styles.outOfStock;
-    }
-
-    if (stock <= 5) {
-      return styles.lowStock;
-    }
-
-    return styles.inStock;
+  const formatPrice = (price) => {
+    return Number(price || 0).toLocaleString("en-IN");
   };
+
+  if (loading) {
+    return (
+      <main className={styles.page}>
+        <div className="container">
+          <div className={styles.stateContainer}>
+            <div
+              className="spinner-border text-primary"
+              role="status"
+              aria-label="Loading products"
+            >
+              <span className="visually-hidden">
+                Loading...
+              </span>
+            </div>
+
+            <p className={styles.stateText}>
+              Loading products...
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className={styles.page}>
+        <div className="container">
+          <div className={styles.errorContainer}>
+            <div className={styles.errorIcon}>
+              !
+            </div>
+
+            <h2>Unable to Load Products</h2>
+
+            <p>{error}</p>
+
+            <button
+              type="button"
+              className={styles.retryButton}
+              onClick={fetchProducts}
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <div className={styles.page}>
-      {/* ==============================
-          PAGE HEADER
-      ============================== */}
+    <main className={styles.page}>
+      <div className="container">
+        {/* ==============================
+            PAGE HEADER
+        ============================== */}
 
-      <section className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>OUR COLLECTION</p>
+        <div className={styles.header}>
+          <div>
+            <p className={styles.eyebrow}>
+              PRODUCT CATALOG
+            </p>
 
-          <h1 className={styles.title}>Products</h1>
+            <h1 className={styles.title}>
+              Explore Products
+            </h1>
 
-          <p className={styles.subtitle}>
-            Browse our products and find what you need.
-          </p>
+            <p className={styles.subtitle}>
+              Discover products and find what you need.
+            </p>
+          </div>
+
+          <div className={styles.productCount}>
+            {products.length}{" "}
+            {products.length === 1
+              ? "Product"
+              : "Products"}
+          </div>
         </div>
 
-        <div className={styles.productCount}>
-          {products.length}{" "}
-          {products.length === 1 ? "Product" : "Products"}
-        </div>
-      </section>
+        {/* ==============================
+            FILTER SECTION
+        ============================== */}
 
-      {/* ==============================
-          FILTER SECTION
-      ============================== */}
+        <section className={styles.filterSection}>
+          <div className={styles.searchWrapper}>
+            <label
+              htmlFor="product-search"
+              className={styles.label}
+            >
+              Search Products
+            </label>
 
-      <section className={styles.filterSection}>
-        <div className={styles.searchWrapper}>
-          <label
-            htmlFor="product-search"
-            className={styles.label}
-          >
-            Search Products
-          </label>
+            <input
+              id="product-search"
+              type="search"
+              className={styles.searchInput}
+              placeholder="Search by product name or description..."
+              value={searchTerm}
+              onChange={(event) =>
+                setSearchTerm(event.target.value)
+              }
+            />
+          </div>
 
-          <input
-            id="product-search"
-            type="text"
-            className={styles.searchInput}
-            placeholder="Search by name or description..."
-            value={searchTerm}
-            onChange={(event) =>
-              setSearchTerm(event.target.value)
-            }
-          />
-        </div>
+          <div className={styles.categoryWrapper}>
+            <label
+              htmlFor="category-filter"
+              className={styles.label}
+            >
+              Category
+            </label>
 
-        <div className={styles.categoryWrapper}>
-          <label
-            htmlFor="category-filter"
-            className={styles.label}
-          >
-            Category
-          </label>
-
-          <select
-            id="category-filter"
-            className={styles.categorySelect}
-            value={selectedCategory}
-            onChange={(event) =>
-              setSelectedCategory(event.target.value)
-            }
-          >
-            {categories.map((category) => (
-              <option
-                key={category}
-                value={category}
-              >
-                {category}
+            <select
+              id="category-filter"
+              className={styles.categorySelect}
+              value={category}
+              onChange={(event) =>
+                setCategory(event.target.value)
+              }
+            >
+              <option value="">
+                All Categories
               </option>
-            ))}
-          </select>
-        </div>
-      </section>
 
-      {/* ==============================
-          RESULT SUMMARY
-      ============================== */}
+              {categories.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
+        </section>
 
-      {!loading && !error && products.length > 0 && (
+        {/* ==============================
+            RESULT BAR
+        ============================== */}
+
         <div className={styles.resultBar}>
           <p>
             Showing{" "}
-            <strong>{filteredProducts.length}</strong>{" "}
+            <strong>
+              {filteredProducts.length}
+            </strong>{" "}
             of{" "}
             <strong>{products.length}</strong>{" "}
             products
           </p>
 
-          {hasActiveFilters && (
+          {(searchTerm || category) && (
             <button
               type="button"
               className={styles.clearFiltersButton}
@@ -245,59 +271,12 @@ function Products() {
             </button>
           )}
         </div>
-      )}
 
-      {/* ==============================
-          LOADING
-      ============================== */}
+        {/* ==============================
+            EMPTY PRODUCTS
+        ============================== */}
 
-      {loading && (
-        <div className={styles.stateContainer}>
-          <div
-            className="spinner-border"
-            role="status"
-            aria-label="Loading products"
-          >
-            <span className="visually-hidden">
-              Loading...
-            </span>
-          </div>
-
-          <p className={styles.stateText}>
-            Loading products...
-          </p>
-        </div>
-      )}
-
-      {/* ==============================
-          ERROR
-      ============================== */}
-
-      {!loading && error && (
-        <div className={styles.errorContainer}>
-          <div className={styles.errorIcon}>!</div>
-
-          <h2>Unable to Load Products</h2>
-
-          <p>{error}</p>
-
-          <button
-            type="button"
-            className={styles.retryButton}
-            onClick={fetchProducts}
-          >
-            Try Again
-          </button>
-        </div>
-      )}
-
-      {/* ==============================
-          NO PRODUCTS
-      ============================== */}
-
-      {!loading &&
-        !error &&
-        products.length === 0 && (
+        {products.length === 0 && (
           <div className={styles.stateContainer}>
             <div className={styles.emptyIcon}>
               🛍️
@@ -306,100 +285,115 @@ function Products() {
             <h2>No Products Available</h2>
 
             <p className={styles.stateText}>
-              There are currently no products available.
+              There are currently no products available
+              in the catalog.
             </p>
           </div>
         )}
 
-      {/* ==============================
-          NO FILTER RESULTS
-      ============================== */}
+        {/* ==============================
+            NO FILTER RESULTS
+        ============================== */}
 
-      {!loading &&
-        !error &&
-        products.length > 0 &&
-        filteredProducts.length === 0 && (
-          <div className={styles.stateContainer}>
-            <div className={styles.emptyIcon}>
-              🔍
+        {products.length > 0 &&
+          filteredProducts.length === 0 && (
+            <div className={styles.stateContainer}>
+              <div className={styles.emptyIcon}>
+                🔎
+              </div>
+
+              <h2>No Matching Products</h2>
+
+              <p className={styles.stateText}>
+                Try changing your search term or
+                category filter.
+              </p>
+
+              <button
+                type="button"
+                className={styles.clearButton}
+                onClick={clearFilters}
+              >
+                Clear Filters
+              </button>
             </div>
+          )}
 
-            <h2>No Matching Products</h2>
+        {/* ==============================
+            PRODUCT GRID
+        ============================== */}
 
-            <p className={styles.stateText}>
-              Try changing your search or category
-              filter.
-            </p>
-
-            <button
-              type="button"
-              className={styles.clearButton}
-              onClick={clearFilters}
-            >
-              Clear Filters
-            </button>
-          </div>
-        )}
-
-      {/* ==============================
-          PRODUCT GRID
-      ============================== */}
-
-      {!loading &&
-        !error &&
-        filteredProducts.length > 0 && (
-          <section className={styles.productGrid}>
+        {filteredProducts.length > 0 && (
+          <div className={styles.productGrid}>
             {filteredProducts.map((product) => {
-              const stock = getStockValue(product);
+              const stockStatus =
+                getStockStatus(product);
+
+              const image =
+                product.imageUrl ||
+                product.image ||
+                "";
 
               return (
                 <article
                   className={styles.productCard}
                   key={product.id}
                 >
-                  {/* IMAGE */}
+                  {/* PRODUCT IMAGE */}
 
                   <div className={styles.imageContainer}>
-                    <img
-                      src={getProductImage(product)}
-                      alt={
-                        product.name ||
-                        "Product"
-                      }
-                      className={styles.productImage}
-                      onError={(event) => {
-                        event.currentTarget.src =
-                          "https://via.placeholder.com/600x400?text=Product";
-                      }}
-                    />
-
-                    {product.category && (
-                      <span
+                    {image ? (
+                      <img
+                        src={image}
+                        alt={product.name}
+                        className={styles.productImage}
+                        onError={(event) => {
+                          event.currentTarget.style.display =
+                            "none";
+                        }}
+                      />
+                    ) : (
+                      <div
                         className={
-                          styles.categoryBadge
+                          styles.imagePlaceholder
                         }
                       >
-                        {product.category}
+                        🛍️
+                      </div>
+                    )}
+
+                    <span
+                      className={styles.categoryBadge}
+                    >
+                      {product.category ||
+                        "Product"}
+                    </span>
+
+                    {getStockQuantity(product) <=
+                      0 && (
+                      <span
+                        className={
+                          styles.outOfStockBadge
+                        }
+                      >
+                        Out of Stock
                       </span>
                     )}
                   </div>
 
-                  {/* CONTENT */}
+                  {/* PRODUCT CONTENT */}
 
-                  <div
-                    className={styles.productContent}
-                  >
-                    <h2
-                      className={styles.productName}
-                    >
-                      {product.name}
+                  <div className={styles.productContent}>
+                    <h2 className={styles.productName}>
+                      {product.name ||
+                        "Unnamed Product"}
                     </h2>
 
                     <p
                       className={styles.description}
                     >
                       {product.description ||
-                        "No description available."}
+                        "Quality product available in our store."}
                     </p>
 
                     <div
@@ -407,39 +401,33 @@ function Products() {
                     >
                       <div>
                         <span
-                          className={
-                            styles.priceLabel
-                          }
+                          className={styles.priceLabel}
                         >
                           Price
                         </span>
 
-                        <span
+                        <strong
                           className={styles.price}
                         >
                           ₹
-                          {Number(
-                            product.price || 0
-                          ).toLocaleString(
-                            "en-IN"
+                          {formatPrice(
+                            product.price
                           )}
-                        </span>
+                        </strong>
                       </div>
 
                       <span
-                        className={getStockClass(
-                          stock
-                        )}
+                        className={
+                          stockStatus.className
+                        }
                       >
-                        {getStockStatus(stock)}
+                        {stockStatus.label}
                       </span>
                     </div>
 
                     <Link
                       to={`/products/${product.id}`}
-                      className={
-                        styles.detailsButton
-                      }
+                      className={styles.detailsButton}
                     >
                       View Details
                     </Link>
@@ -447,9 +435,10 @@ function Products() {
                 </article>
               );
             })}
-          </section>
+          </div>
         )}
-    </div>
+      </div>
+    </main>
   );
 }
 

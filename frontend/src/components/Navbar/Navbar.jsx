@@ -1,113 +1,152 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
 
 import styles from "./Navbar.module.css";
 
 function Navbar() {
-  const { user, loading, logout } = useAuth();
+  const { user, logout } = useAuth();
 
   const navigate = useNavigate();
 
-  const getNavLinkClass = ({ isActive }) => {
-    return isActive
-      ? `${styles.navLink} ${styles.active}`
-      : styles.navLink;
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const closeMenu = () => {
+    setMenuOpen(false);
   };
 
   const handleLogout = () => {
     logout();
-
+    closeMenu();
     navigate("/login");
   };
 
+  const getLinkClass = ({ isActive }) =>
+    `${styles.navLink} ${
+      isActive ? styles.active : ""
+    }`;
+
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
-      <div className="container">
-        <NavLink
-          to="/"
-          className={styles.brand}
-        >
-          E-Commerce
-        </NavLink>
+    <header className={styles.header}>
+      <nav className={styles.navbar}>
+        <div className={styles.navContainer}>
 
-        <button
-          className="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#mainNavbar"
-          aria-controls="mainNavbar"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
-        >
-          <span className="navbar-toggler-icon"></span>
-        </button>
+          {/* BRAND */}
 
-        <div
-          className="collapse navbar-collapse"
-          id="mainNavbar"
-        >
-          <ul className="navbar-nav ms-auto align-items-lg-center">
+          <Link
+            to="/"
+            className={styles.brand}
+            onClick={closeMenu}
+          >
+            <span className={styles.brandIcon}>
+              🛒
+            </span>
 
-            <li className="nav-item">
+            <span className={styles.brandText}>
+              Distributed Shop
+            </span>
+          </Link>
+
+          {/* MOBILE MENU BUTTON */}
+
+          <button
+            type="button"
+            className={`${styles.menuButton} ${
+              menuOpen ? styles.menuButtonOpen : ""
+            }`}
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Toggle navigation menu"
+            aria-expanded={menuOpen}
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+          {/* NAVIGATION */}
+
+          <div
+            className={`${styles.navigation} ${
+              menuOpen ? styles.navigationOpen : ""
+            }`}
+          >
+            <div className={styles.navLinks}>
+
               <NavLink
                 to="/"
-                className={getNavLinkClass}
-                end
+                className={getLinkClass}
+                onClick={closeMenu}
               >
                 Home
               </NavLink>
-            </li>
 
-            <li className="nav-item">
               <NavLink
                 to="/products"
-                className={getNavLinkClass}
+                className={getLinkClass}
+                onClick={closeMenu}
               >
                 Products
               </NavLink>
-            </li>
 
-            <li className="nav-item">
-              <NavLink
-                to="/cart"
-                className={getNavLinkClass}
-              >
-                Cart
-              </NavLink>
-            </li>
+              {user && (
+                <>
+                  <NavLink
+                    to="/cart"
+                    className={getLinkClass}
+                    onClick={closeMenu}
+                  >
+                    Cart
+                  </NavLink>
 
-            <li className="nav-item">
-              <NavLink
-                to="/orders"
-                className={getNavLinkClass}
-              >
-                Orders
-              </NavLink>
-            </li>
+                  <NavLink
+                    to="/orders"
+                    className={getLinkClass}
+                    onClick={closeMenu}
+                  >
+                    Orders
+                  </NavLink>
 
-            <li className="nav-item">
-              <NavLink
-                to="/notifications"
-                className={getNavLinkClass}
-              >
-                Notifications
-              </NavLink>
-            </li>
+                  <NavLink
+                    to="/notifications"
+                    className={getLinkClass}
+                    onClick={closeMenu}
+                  >
+                    Notifications
+                  </NavLink>
 
-            {!loading && user ? (
-              <>
-                <li className="nav-item">
-                  <span className={styles.userName}>
-                    Welcome,{" "}
-                    {user.fullName ||
-                      user.name ||
-                      user.email ||
-                      "User"}
-                  </span>
-                </li>
+                  <NavLink
+                    to="/profile"
+                    className={getLinkClass}
+                    onClick={closeMenu}
+                  >
+                    Profile
+                  </NavLink>
+                </>
+              )}
+            </div>
 
-                <li className="nav-item">
+            {/* USER SECTION */}
+
+            <div className={styles.userSection}>
+              {user ? (
+                <>
+                  <Link
+                    to="/profile"
+                    className={styles.userInfo}
+                    onClick={closeMenu}
+                  >
+                    <span className={styles.welcomeText}>
+                      Welcome
+                    </span>
+
+                    <span className={styles.userName}>
+                      {user.fullName ||
+                        user.email ||
+                        "User"}
+                    </span>
+                  </Link>
+
                   <button
                     type="button"
                     className={styles.logoutButton}
@@ -115,34 +154,31 @@ function Navbar() {
                   >
                     Logout
                   </button>
-                </li>
-              </>
-            ) : !loading ? (
-              <>
-                <li className="nav-item">
-                  <NavLink
+                </>
+              ) : (
+                <div className={styles.authLinks}>
+                  <Link
                     to="/login"
                     className={styles.loginButton}
+                    onClick={closeMenu}
                   >
                     Login
-                  </NavLink>
-                </li>
+                  </Link>
 
-                <li className="nav-item">
-                  <NavLink
+                  <Link
                     to="/register"
                     className={styles.registerButton}
+                    onClick={closeMenu}
                   >
                     Register
-                  </NavLink>
-                </li>
-              </>
-            ) : null}
-
-          </ul>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </header>
   );
 }
 

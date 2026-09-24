@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -33,12 +34,6 @@ function Orders() {
 
       const data = response.data;
 
-      /*
-       * Backend may return either:
-       * 1. Direct array
-       * 2. Object containing orders
-       */
-
       if (Array.isArray(data)) {
         setOrders(data);
       } else if (Array.isArray(data.orders)) {
@@ -54,13 +49,10 @@ function Orders() {
         error
       );
 
-      if (error.response?.data?.message) {
-        setError(error.response.data.message);
-      } else {
-        setError(
+      setError(
+        error.response?.data?.message ||
           "Unable to load your orders."
-        );
-      }
+      );
     } finally {
       setLoading(false);
     }
@@ -98,10 +90,6 @@ function Orders() {
         "Order cancelled successfully."
       );
 
-      /*
-       * Refresh the order list so the
-       * latest status is displayed.
-       */
       await fetchOrders();
     } catch (error) {
       console.error(
@@ -109,13 +97,10 @@ function Orders() {
         error
       );
 
-      if (error.response?.data?.message) {
-        setError(error.response.data.message);
-      } else {
-        setError(
+      setError(
+        error.response?.data?.message ||
           "Unable to cancel the order."
-        );
-      }
+      );
     } finally {
       setCancellingOrderId(null);
     }
@@ -135,9 +120,23 @@ function Orders() {
       case "COMPLETED":
         return styles.statusCompleted;
 
+      case "PROCESSING":
+        return styles.statusProcessing;
+
       default:
         return styles.statusDefault;
     }
+  };
+
+  const getStatusLabel = (status) => {
+    if (!status) {
+      return "Unknown";
+    }
+
+    return (
+      status.charAt(0).toUpperCase() +
+      status.slice(1).toLowerCase()
+    );
   };
 
   const formatDate = (dateValue) => {
@@ -157,6 +156,16 @@ function Orders() {
     });
   };
 
+  const formatPrice = (price) => {
+    return Number(price || 0).toLocaleString(
+      "en-IN",
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    );
+  };
+
   const getItemCount = (order) => {
     if (!Array.isArray(order.items)) {
       return 0;
@@ -164,51 +173,128 @@ function Orders() {
 
     return order.items.reduce(
       (total, item) =>
-        total + (item.quantity || 0),
+        total + Number(item.quantity || 0),
       0
+    );
+  };
+
+  const getPaymentMethod = (order) => {
+    return (
+      order.paymentMethod ||
+      order.paymentType ||
+      "COD"
+    );
+  };
+
+  const getOrderNumber = (order) => {
+    return (
+      order.orderId ||
+      order.id ||
+      "N/A"
     );
   };
 
   if (loading) {
     return (
-      <div className={styles.page}>
+      <main className={styles.page}>
         <div className={styles.container}>
-          <p className={styles.message}>
-            Loading your orders...
-          </p>
+          <div className={styles.loadingState}>
+            <div
+              className="spinner-border text-primary"
+              role="status"
+              aria-label="Loading orders"
+            >
+              <span className="visually-hidden">
+                Loading...
+              </span>
+            </div>
+
+            <p>
+              Loading your orders...
+            </p>
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className={styles.page}>
+    <main className={styles.page}>
       <div className={styles.container}>
 
-        <div className={styles.header}>
-          <h1 className={styles.title}>
-            My Orders
-          </h1>
+        {/* HEADER */}
+        <header className={styles.header}>
+          <div>
+            <p className={styles.eyebrow}>
+              ACCOUNT
+            </p>
 
-          <p className={styles.subtitle}>
-            View and manage your orders.
-          </p>
-        </div>
+            <h1 className={styles.title}>
+              My Orders
+            </h1>
 
+            <p className={styles.subtitle}>
+              View your order history and manage
+              your recent purchases.
+            </p>
+          </div>
+
+          <Link
+            to="/products"
+            className={styles.shopButton}
+          >
+            Continue Shopping
+          </Link>
+        </header>
+
+        {/* ERROR */}
         {error && (
-          <div className={styles.error}>
-            {error}
+          <div
+            className={styles.error}
+            role="alert"
+          >
+            <span className={styles.alertIcon}>
+              !
+            </span>
+
+            <span>{error}</span>
+
+            {orders.length === 0 && (
+              <button
+                type="button"
+                className={styles.retryButton}
+                onClick={fetchOrders}
+              >
+                Retry
+              </button>
+            )}
           </div>
         )}
 
+        {/* SUCCESS */}
         {success && (
-          <div className={styles.success}>
-            {success}
+          <div
+            className={styles.success}
+            role="status"
+          >
+            <span className={styles.successIcon}>
+              ✓
+            </span>
+
+            <span>{success}</span>
           </div>
         )}
 
+        {/* EMPTY */}
         {orders.length === 0 ? (
           <div className={styles.emptyBox}>
+            <div className={styles.emptyIcon}>
+              📦
+            </div>
+
+            <p className={styles.emptyEyebrow}>
+              ORDER HISTORY
+            </p>
 
             <h2>
               No Orders Yet
@@ -216,187 +302,364 @@ function Orders() {
 
             <p>
               You haven't placed any orders yet.
+              Start shopping and your orders will
+              appear here.
             </p>
 
             <Link
               to="/products"
-              className={styles.shopButton}
+              className={styles.primaryButton}
             >
               Start Shopping
             </Link>
-
           </div>
         ) : (
-          <div className={styles.ordersList}>
+          <>
+            {/* ORDER COUNT */}
+            <div className={styles.listHeader}>
+              <div>
+                <span className={styles.listEyebrow}>
+                  ORDER HISTORY
+                </span>
 
-            {orders.map((order) => {
+                <h2>
+                  {orders.length}{" "}
+                  {orders.length === 1
+                    ? "Order"
+                    : "Orders"}
+                </h2>
+              </div>
+            </div>
 
-              const orderId =
-                order.orderId || order.id;
+            {/* ORDERS */}
+            <div className={styles.ordersList}>
+              {orders.map((order) => {
+                const orderId =
+                  getOrderNumber(order);
 
-              const status =
-                order.status || "UNKNOWN";
+                const status =
+                  order.status || "UNKNOWN";
 
-              const total =
-                order.totalAmount ??
-                order.totalPrice ??
-                0;
+                const total =
+                  order.totalAmount ??
+                  order.totalPrice ??
+                  0;
 
-              return (
-                <div
-                  key={orderId}
-                  className={styles.orderCard}
-                >
+                const itemCount =
+                  getItemCount(order);
 
-                  <div className={styles.orderHeader}>
+                const paymentMethod =
+                  getPaymentMethod(order);
 
-                    <div>
-                      <h2 className={styles.orderId}>
-                        Order #{orderId}
-                      </h2>
-
-                      <p className={styles.orderDate}>
-                        Placed on{" "}
-                        {formatDate(
-                          order.createdAt
-                        )}
-                      </p>
-                    </div>
-
-                    <span
-                      className={`${styles.status} ${getStatusClass(
-                        status
-                      )}`}
+                return (
+                  <article
+                    key={orderId}
+                    className={styles.orderCard}
+                  >
+                    {/* ORDER HEADER */}
+                    <div
+                      className={
+                        styles.orderHeader
+                      }
                     >
-                      {status}
-                    </span>
-
-                  </div>
-
-                  <div className={styles.orderInfo}>
-
-                    <div className={styles.infoItem}>
-                      <span className={styles.infoLabel}>
-                        Items
-                      </span>
-
-                      <span className={styles.infoValue}>
-                        {getItemCount(order)}
-                      </span>
-                    </div>
-
-                    <div className={styles.infoItem}>
-                      <span className={styles.infoLabel}>
-                        Total
-                      </span>
-
-                      <span className={styles.infoValue}>
-                        ₹
-                        {Number(total).toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div className={styles.infoItem}>
-                      <span className={styles.infoLabel}>
-                        Payment
-                      </span>
-
-                      <span className={styles.infoValue}>
-                        COD
-                      </span>
-                    </div>
-
-                  </div>
-
-                  {Array.isArray(order.items) &&
-                    order.items.length > 0 && (
-                      <div className={styles.itemsPreview}>
-
-                        <h3>
-                          Order Items
-                        </h3>
-
-                        {order.items.map(
-                          (item, index) => (
-                            <div
-                              key={
-                                item.orderItemId ||
-                                index
-                              }
-                              className={
-                                styles.itemRow
-                              }
-                            >
-
-                              <span>
-                                Product ID:{" "}
-                                {item.productId}
-                              </span>
-
-                              <span>
-                                Qty:{" "}
-                                {item.quantity}
-                              </span>
-
-                              <span>
-                                ₹
-                                {Number(
-                                  item.price || 0
-                                ).toFixed(2)}
-                              </span>
-
-                            </div>
-                          )
-                        )}
-
-                      </div>
-                    )}
-
-                  <div className={styles.actions}>
-
-                   <Link
-                      to={`/orders/${orderId}`}
-                      className={styles.detailsButton}
-                    >
-                            View Details
-                    </Link>
-
-                    {status.toUpperCase() ===
-                      "PENDING" && (
-                      <button
-                        type="button"
+                      <div
                         className={
-                          styles.cancelButton
-                        }
-                        onClick={() =>
-                          handleCancelOrder(
-                            orderId
-                          )
-                        }
-                        disabled={
-                          cancellingOrderId ===
-                          orderId
+                          styles.orderIdentity
                         }
                       >
-                        {cancellingOrderId ===
-                        orderId
-                          ? "Cancelling..."
-                          : "Cancel Order"}
-                      </button>
-                    )}
+                        <div
+                          className={
+                            styles.orderIcon
+                          }
+                        >
+                          📦
+                        </div>
 
-                  </div>
+                        <div>
+                          <p
+                            className={
+                              styles.orderLabel
+                            }
+                          >
+                            ORDER
+                          </p>
 
-                </div>
-              );
-            })}
+                          <h2
+                            className={
+                              styles.orderId
+                            }
+                          >
+                            #{orderId}
+                          </h2>
 
-          </div>
+                          <p
+                            className={
+                              styles.orderDate
+                            }
+                          >
+                            Placed on{" "}
+                            {formatDate(
+                              order.createdAt
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`${styles.status} ${getStatusClass(
+                          status
+                        )}`}
+                      >
+                        <span
+                          className={
+                            styles.statusDot
+                          }
+                        ></span>
+
+                        {getStatusLabel(
+                          status
+                        )}
+                      </span>
+                    </div>
+
+                    {/* ORDER SUMMARY */}
+                    <div
+                      className={
+                        styles.orderInfo
+                      }
+                    >
+                      <div
+                        className={
+                          styles.infoItem
+                        }
+                      >
+                        <span
+                          className={
+                            styles.infoLabel
+                          }
+                        >
+                          Items
+                        </span>
+
+                        <strong
+                          className={
+                            styles.infoValue
+                          }
+                        >
+                          {itemCount}
+                        </strong>
+                      </div>
+
+                      <div
+                        className={
+                          styles.infoItem
+                        }
+                      >
+                        <span
+                          className={
+                            styles.infoLabel
+                          }
+                        >
+                          Total Amount
+                        </span>
+
+                        <strong
+                          className={
+                            styles.infoValue
+                          }
+                        >
+                          ₹
+                          {formatPrice(
+                            total
+                          )}
+                        </strong>
+                      </div>
+
+                      <div
+                        className={
+                          styles.infoItem
+                        }
+                      >
+                        <span
+                          className={
+                            styles.infoLabel
+                          }
+                        >
+                          Payment
+                        </span>
+
+                        <strong
+                          className={
+                            styles.infoValue
+                          }
+                        >
+                          {paymentMethod}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* ITEMS PREVIEW */}
+                    {Array.isArray(
+                      order.items
+                    ) &&
+                      order.items.length > 0 && (
+                        <div
+                          className={
+                            styles.itemsPreview
+                          }
+                        >
+                          <div
+                            className={
+                              styles.itemsHeader
+                            }
+                          >
+                            <h3>
+                              Order Items
+                            </h3>
+
+                            <span>
+                              {order.items.length}{" "}
+                              product
+                              {order.items.length ===
+                              1
+                                ? ""
+                                : "s"}
+                            </span>
+                          </div>
+
+                          <div
+                            className={
+                              styles.itemList
+                            }
+                          >
+                            {order.items.map(
+                              (
+                                item,
+                                index
+                              ) => (
+                                <div
+                                  key={
+                                    item.orderItemId ||
+                                    item.id ||
+                                    index
+                                  }
+                                  className={
+                                    styles.itemRow
+                                  }
+                                >
+                                  <div
+                                    className={
+                                      styles.itemProduct
+                                    }
+                                  >
+                                    <span
+                                      className={
+                                        styles.itemIcon
+                                      }
+                                    >
+                                      🛍️
+                                    </span>
+
+                                    <div>
+                                      <span
+                                        className={
+                                          styles.itemName
+                                        }
+                                      >
+                                        Product
+                                      </span>
+
+                                      <span
+                                        className={
+                                          styles.itemProductId
+                                        }
+                                      >
+                                        ID:{" "}
+                                        {
+                                          item.productId
+                                        }
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <span
+                                    className={
+                                      styles.itemQuantity
+                                    }
+                                  >
+                                    Qty:{" "}
+                                    {
+                                      item.quantity
+                                    }
+                                  </span>
+
+                                  <strong
+                                    className={
+                                      styles.itemPrice
+                                    }
+                                  >
+                                    ₹
+                                    {formatPrice(
+                                      item.price
+                                    )}
+                                  </strong>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                    {/* ACTIONS */}
+                    <div
+                      className={
+                        styles.actions
+                      }
+                    >
+                      <Link
+                        to={`/orders/${orderId}`}
+                        className={
+                          styles.detailsButton
+                        }
+                      >
+                        View Details
+                        <span>→</span>
+                      </Link>
+
+                      {status.toUpperCase() ===
+                        "PENDING" && (
+                        <button
+                          type="button"
+                          className={
+                            styles.cancelButton
+                          }
+                          onClick={() =>
+                            handleCancelOrder(
+                              orderId
+                            )
+                          }
+                          disabled={
+                            cancellingOrderId ===
+                            orderId
+                          }
+                        >
+                          {cancellingOrderId ===
+                          orderId
+                            ? "Cancelling..."
+                            : "Cancel Order"}
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </>
         )}
-
       </div>
-    </div>
+    </main>
   );
 }
 
 export default Orders;
+

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -8,46 +9,76 @@ import styles from "./Cart.module.css";
 function Cart() {
   const [cart, setCart] = useState(null);
   const [products, setProducts] = useState({});
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [updatingProductId, setUpdatingProductId] = useState(null);
-  const [removingProductId, setRemovingProductId] = useState(null);
-  const [clearingCart, setClearingCart] = useState(false);
+  const [updatingProductId, setUpdatingProductId] =
+    useState(null);
+
+  const [removingProductId, setRemovingProductId] =
+    useState(null);
+
+  const [clearingCart, setClearingCart] =
+    useState(false);
 
   useEffect(() => {
     fetchCart();
   }, []);
 
+  // ======================================================
+  // FETCH CART
+  // ======================================================
   const fetchCart = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const response = await api.get("/api/cart");
-
-      console.log("Cart response:", response.data);
-
-      setCart(response.data);
-
-      await fetchProducts(response.data.items || []);
+      await refreshCart();
     } catch (error) {
       console.error(
         "Failed to fetch cart:",
         error
       );
 
-      if (error.response?.data?.message) {
-        setError(error.response.data.message);
-      } else {
-        setError("Unable to load cart.");
-      }
+      setError(
+        error.response?.data?.message ||
+          "Unable to load your cart. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  // ======================================================
+  // REFRESH CART WITHOUT FULL PAGE LOADING
+  // ======================================================
+  const refreshCart = async () => {
+    const response = await api.get("/api/cart");
+
+    console.log(
+      "Cart response:",
+      response.data
+    );
+
+    setCart(response.data);
+
+    await fetchProducts(
+      response.data?.items || []
+    );
+
+    return response.data;
+  };
+
+  // ======================================================
+  // FETCH PRODUCT DETAILS
+  // ======================================================
   const fetchProducts = async (items) => {
+    if (!items.length) {
+      setProducts({});
+      return;
+    }
+
     try {
       const productRequests = items.map(
         async (item) => {
@@ -98,43 +129,19 @@ function Cart() {
     }
   };
 
-  const refreshCart = async () => {
-    try {
-      const response = await api.get("/api/cart");
-
-      console.log(
-        "Refreshed cart:",
-        response.data
-      );
-
-      setCart(response.data);
-
-      await fetchProducts(
-        response.data.items || []
-      );
-    } catch (error) {
-      console.error(
-        "Failed to refresh cart:",
-        error
-      );
-
-      if (error.response?.data?.message) {
-        setError(error.response.data.message);
-      } else {
-        setError(
-          "Unable to refresh cart."
-        );
-      }
-    }
-  };
-
+  // ======================================================
+  // CALCULATE ITEM SUBTOTAL
+  // ======================================================
   const calculateSubtotal = (item) => {
-    return (
-      Number(item.price) *
-      Number(item.quantity)
-    );
+    const price = Number(item.price) || 0;
+    const quantity = Number(item.quantity) || 0;
+
+    return price * quantity;
   };
 
+  // ======================================================
+  // CALCULATE TOTAL
+  // ======================================================
   const calculateTotal = () => {
     if (!cart?.items) {
       return 0;
@@ -147,6 +154,33 @@ function Cart() {
     );
   };
 
+  // ======================================================
+  // CALCULATE TOTAL ITEMS
+  // ======================================================
+  const calculateTotalItems = () => {
+    if (!cart?.items) {
+      return 0;
+    }
+
+    return cart.items.reduce(
+      (total, item) =>
+        total + Number(item.quantity || 0),
+      0
+    );
+  };
+
+  // ======================================================
+  // FORMAT PRICE
+  // ======================================================
+  const formatPrice = (price) => {
+    return Number(price || 0).toLocaleString(
+      "en-IN"
+    );
+  };
+
+  // ======================================================
+  // UPDATE QUANTITY
+  // ======================================================
   const updateQuantity = async (
     productId,
     newQuantity
@@ -171,47 +205,70 @@ function Cart() {
         response.data
       );
 
-      setCart(response.data);
+      // Use backend response when it contains
+      // the updated cart.
+      if (
+        response.data &&
+        Array.isArray(response.data.items)
+      ) {
+        setCart(response.data);
 
-      await fetchProducts(
-        response.data.items || []
-      );
+        await fetchProducts(
+          response.data.items
+        );
+      } else {
+        // Fallback: reload actual cart
+        await refreshCart();
+      }
     } catch (error) {
       console.error(
         "Failed to update cart:",
         error
       );
 
-      if (error.response?.data?.message) {
-        setError(error.response.data.message);
-      } else {
-        setError(
+      setError(
+        error.response?.data?.message ||
           "Unable to update cart item."
-        );
-      }
+      );
     } finally {
       setUpdatingProductId(null);
     }
   };
 
+  // ======================================================
+  // REMOVE SINGLE CART ITEM
+  // ======================================================
   const removeItem = async (productId) => {
     try {
       setRemovingProductId(productId);
       setError("");
 
-      const response = await api.delete(
+      console.log(
+        "Removing cart item:",
+        productId
+      );
+
+      await api.delete(
         `/api/cart/items/${productId}`
       );
 
       console.log(
-        "Removed cart item:",
-        response.data
+        "Cart item removed successfully:",
+        productId
       );
 
-      setCart(response.data);
+      // IMPORTANT:
+      // Do NOT use the DELETE response to update
+      // the cart.
+      //
+      // Fetch the actual cart again so that only
+      // the selected product is removed.
+      const updatedCart =
+        await refreshCart();
 
-      await fetchProducts(
-        response.data.items || []
+      console.log(
+        "Cart after removing item:",
+        updatedCart
       );
     } catch (error) {
       console.error(
@@ -219,18 +276,18 @@ function Cart() {
         error
       );
 
-      if (error.response?.data?.message) {
-        setError(error.response.data.message);
-      } else {
-        setError(
+      setError(
+        error.response?.data?.message ||
           "Unable to remove cart item."
-        );
-      }
+      );
     } finally {
       setRemovingProductId(null);
     }
   };
 
+  // ======================================================
+  // CLEAR ENTIRE CART
+  // ======================================================
   const clearCart = async () => {
     try {
       setClearingCart(true);
@@ -245,7 +302,17 @@ function Cart() {
         response.data
       );
 
-      setCart(response.data);
+      // The clear-cart operation is intentionally
+      // supposed to remove every item.
+      if (
+        response.data &&
+        Array.isArray(response.data.items)
+      ) {
+        setCart(response.data);
+      } else {
+        await refreshCart();
+      }
+
       setProducts({});
     } catch (error) {
       console.error(
@@ -253,38 +320,53 @@ function Cart() {
         error
       );
 
-      if (error.response?.data?.message) {
-        setError(error.response.data.message);
-      } else {
-        setError(
+      setError(
+        error.response?.data?.message ||
           "Unable to clear cart."
-        );
-      }
+      );
     } finally {
       setClearingCart(false);
     }
   };
 
+  // ======================================================
+  // LOADING STATE
+  // ======================================================
   if (loading) {
     return (
-      <div className={styles.page}>
+      <main className={styles.page}>
         <div className={styles.container}>
-          <div className={styles.message}>
-            Loading cart...
+          <div className={styles.loadingState}>
+            <div
+              className="spinner-border text-primary"
+              role="status"
+              aria-label="Loading cart"
+            >
+              <span className="visually-hidden">
+                Loading...
+              </span>
+            </div>
+
+            <p>Loading your cart...</p>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
+  // ======================================================
+  // ERROR STATE
+  // ======================================================
   if (error && !cart) {
     return (
-      <div className={styles.page}>
+      <main className={styles.page}>
         <div className={styles.container}>
-          <div className={styles.error}>
-            <h2>
-              Unable to Load Cart
-            </h2>
+          <div className={styles.errorState}>
+            <div className={styles.errorIcon}>
+              !
+            </div>
+
+            <h2>Unable to Load Cart</h2>
 
             <p>{error}</p>
 
@@ -297,25 +379,35 @@ function Cart() {
             </button>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   const items = cart?.items || [];
   const total = calculateTotal();
+  const totalItems = calculateTotalItems();
 
+  // ======================================================
+  // MAIN UI
+  // ======================================================
   return (
-    <div className={styles.page}>
+    <main className={styles.page}>
       <div className={styles.container}>
 
-        <div className={styles.header}>
+        {/* PAGE HEADER */}
+        <header className={styles.header}>
           <div>
+            <p className={styles.eyebrow}>
+              SHOPPING CART
+            </p>
+
             <h1 className={styles.title}>
-              Shopping Cart
+              Your Cart
             </h1>
 
             <p className={styles.subtitle}>
-              Review your items before checkout.
+              Review your selected products before
+              proceeding to checkout.
             </p>
           </div>
 
@@ -324,352 +416,465 @@ function Cart() {
               type="button"
               className={styles.clearButton}
               onClick={clearCart}
-              disabled={clearingCart}
+              disabled={
+                clearingCart ||
+                removingProductId !== null
+              }
             >
               {clearingCart
                 ? "Clearing..."
                 : "Clear Cart"}
             </button>
           )}
-        </div>
+        </header>
 
+        {/* ERROR MESSAGE */}
         {error && (
-          <div className={styles.errorMessage}>
-            {error}
+          <div
+            className={styles.errorMessage}
+            role="alert"
+          >
+            <span
+              className={
+                styles.errorMessageIcon
+              }
+            >
+              !
+            </span>
+
+            <span>{error}</span>
           </div>
         )}
 
+        {/* EMPTY CART */}
         {items.length === 0 ? (
-          <div className={styles.emptyCart}>
+          <section className={styles.emptyCart}>
             <div className={styles.emptyIcon}>
               🛒
             </div>
+
+            <p className={styles.emptyEyebrow}>
+              YOUR CART
+            </p>
 
             <h2>
               Your cart is empty
             </h2>
 
-            <p>
-              You haven't added any products
-              to your cart yet.
+            <p
+              className={
+                styles.emptyDescription
+              }
+            >
+              You haven't added any products to your
+              cart yet. Explore our products and find
+              something you like.
             </p>
 
             <Link
               to="/products"
               className={styles.shopButton}
             >
-              Continue Shopping
+              Browse Products
             </Link>
-          </div>
+          </section>
         ) : (
           <div className={styles.content}>
 
-            <div className={styles.itemsSection}>
+            {/* CART ITEMS */}
+            <section className={styles.itemsSection}>
+              <div className={styles.itemsHeader}>
+                <div>
+                  <h2>
+                    Cart Items
+                  </h2>
 
-              {items.map((item) => {
-                const product =
-                  products[item.productId];
+                  <p>
+                    {totalItems}{" "}
+                    {totalItems === 1
+                      ? "item"
+                      : "items"}{" "}
+                    in your cart
+                  </p>
+                </div>
 
-                const subtotal =
-                  calculateSubtotal(item);
+                <span className={styles.itemCount}>
+                  {items.length}{" "}
+                  {items.length === 1
+                    ? "Product"
+                    : "Products"}
+                </span>
+              </div>
 
-                const isUpdating =
-                  updatingProductId ===
-                  item.productId;
+              <div className={styles.itemList}>
+                {items.map((item) => {
+                  const product =
+                    products[item.productId];
 
-                const isRemoving =
-                  removingProductId ===
-                  item.productId;
+                  const subtotal =
+                    calculateSubtotal(item);
 
-                return (
-                  <div
-                    key={item.productId}
-                    className={styles.cartItem}
-                  >
+                  const isUpdating =
+                    updatingProductId ===
+                    item.productId;
 
-                    <Link
-                      to={`/products/${item.productId}`}
-                      className={styles.productImageLink}
-                    >
-                      {product?.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
-                          alt={
-                            product.name ||
-                            "Product"
-                          }
-                          className={styles.productImage}
-                        />
-                      ) : (
-                        <div
-                          className={
-                            styles.imagePlaceholder
-                          }
-                        >
-                          Product
-                        </div>
-                      )}
-                    </Link>
+                  const isRemoving =
+                    removingProductId ===
+                    item.productId;
 
-                    <div
+                  const image =
+                    product?.imageUrl ||
+                    product?.image ||
+                    "";
+
+                  return (
+                    <article
+                      key={item.productId}
                       className={
-                        styles.productInfo
+                        styles.cartItem
                       }
                     >
+                      {/* IMAGE */}
                       <Link
                         to={`/products/${item.productId}`}
                         className={
-                          styles.productName
+                          styles.productImageLink
                         }
                       >
-                        {product?.name ||
-                          "Product"}
+                        {image ? (
+                          <img
+                            src={image}
+                            alt={
+                              product?.name ||
+                              "Product"
+                            }
+                            className={
+                              styles.productImage
+                            }
+                            onError={(
+                              event
+                            ) => {
+                              event.currentTarget.style.display =
+                                "none";
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className={
+                              styles.imagePlaceholder
+                            }
+                          >
+                            <span>
+                              🛍️
+                            </span>
+                          </div>
+                        )}
                       </Link>
 
-                      {product?.category && (
-                        <p
-                          className={
-                            styles.category
-                          }
-                        >
-                          {product.category}
-                        </p>
-                      )}
-
-                      <p
-                        className={
-                          styles.productId
-                        }
-                      >
-                        Product ID:
-                        <br />
-                        {item.productId}
-                      </p>
-
-                      <p
-                        className={
-                          styles.price
-                        }
-                      >
-                        ₹
-                        {Number(
-                          item.price
-                        ).toLocaleString(
-                          "en-IN"
-                        )}
-                      </p>
-                    </div>
-
-                    <div
-                      className={
-                        styles.quantitySection
-                      }
-                    >
-                      <span>
-                        Quantity
-                      </span>
-
+                      {/* PRODUCT INFORMATION */}
                       <div
                         className={
-                          styles.quantityControls
+                          styles.productInfo
                         }
                       >
-                        <button
-                          type="button"
+                        <Link
+                          to={`/products/${item.productId}`}
                           className={
-                            styles.quantityButton
-                          }
-                          onClick={() =>
-                            updateQuantity(
-                              item.productId,
-                              item.quantity - 1
-                            )
-                          }
-                          disabled={
-                            item.quantity <= 1 ||
-                            isUpdating
+                            styles.productName
                           }
                         >
-                          −
-                        </button>
+                          {product?.name ||
+                            "Product"}
+                        </Link>
 
+                        {product?.category && (
+                          <span
+                            className={
+                              styles.category
+                            }
+                          >
+                            {product.category}
+                          </span>
+                        )}
+
+                        <p
+                          className={
+                            styles.unitPrice
+                          }
+                        >
+                          ₹
+                          {formatPrice(
+                            item.price
+                          )}{" "}
+                          <span>
+                            per item
+                          </span>
+                        </p>
+
+                        <p
+                          className={
+                            styles.productId
+                          }
+                        >
+                          ID:{" "}
+                          {item.productId}
+                        </p>
+                      </div>
+
+                      {/* QUANTITY */}
+                      <div
+                        className={
+                          styles.quantitySection
+                        }
+                      >
                         <span
                           className={
-                            styles.quantity
+                            styles.sectionLabel
                           }
                         >
-                          {isUpdating
-                            ? "..."
-                            : item.quantity}
+                          Quantity
                         </span>
 
-                        <button
-                          type="button"
+                        <div
                           className={
-                            styles.quantityButton
-                          }
-                          onClick={() =>
-                            updateQuantity(
-                              item.productId,
-                              item.quantity + 1
-                            )
-                          }
-                          disabled={
-                            isUpdating
+                            styles.quantityControls
                           }
                         >
-                          +
-                        </button>
+                          <button
+                            type="button"
+                            className={
+                              styles.quantityButton
+                            }
+                            onClick={() =>
+                              updateQuantity(
+                                item.productId,
+                                item.quantity -
+                                  1
+                              )
+                            }
+                            disabled={
+                              item.quantity <=
+                                1 ||
+                              isUpdating ||
+                              isRemoving
+                            }
+                            aria-label="Decrease quantity"
+                          >
+                            −
+                          </button>
+
+                          <span
+                            className={
+                              styles.quantity
+                            }
+                          >
+                            {isUpdating
+                              ? "..."
+                              : item.quantity}
+                          </span>
+
+                          <button
+                            type="button"
+                            className={
+                              styles.quantityButton
+                            }
+                            onClick={() =>
+                              updateQuantity(
+                                item.productId,
+                                item.quantity +
+                                  1
+                              )
+                            }
+                            disabled={
+                              isUpdating ||
+                              isRemoving
+                            }
+                            aria-label="Increase quantity"
+                          >
+                            +
+                          </button>
+                        </div>
                       </div>
-                    </div>
 
-                    <div
-                      className={
-                        styles.subtotalSection
-                      }
-                    >
-                      <span>
-                        Subtotal
-                      </span>
+                      {/* SUBTOTAL */}
+                      <div
+                        className={
+                          styles.subtotalSection
+                        }
+                      >
+                        <span
+                          className={
+                            styles.sectionLabel
+                          }
+                        >
+                          Subtotal
+                        </span>
 
-                      <strong>
-                        ₹
-                        {subtotal.toLocaleString(
-                          "en-IN"
-                        )}
-                      </strong>
-                    </div>
+                        <strong>
+                          ₹
+                          {formatPrice(
+                            subtotal
+                          )}
+                        </strong>
+                      </div>
 
-                    <button
-                      type="button"
-                      className={
-                        styles.removeButton
-                      }
-                      onClick={() =>
-                        removeItem(
-                          item.productId
-                        )
-                      }
-                      disabled={isRemoving}
-                    >
-                      {isRemoving
-                        ? "Removing..."
-                        : "Remove"}
-                    </button>
-
-                  </div>
-                );
-              })}
-            </div>
-
-            <div
-              className={
-                styles.summary
-              }
-            >
-              <h2>
-                Order Summary
-              </h2>
-
-              <div
-                className={
-                  styles.summaryRow
-                }
-              >
-                <span>
-                  Items
-                </span>
-
-                <span>
-                  {items.reduce(
-                    (total, item) =>
-                      total +
-                      Number(
-                        item.quantity
-                      ),
-                    0
-                  )}
-                </span>
+                      {/* REMOVE */}
+                      <button
+                        type="button"
+                        className={
+                          styles.removeButton
+                        }
+                        onClick={() =>
+                          removeItem(
+                            item.productId
+                          )
+                        }
+                        disabled={
+                          isRemoving ||
+                          isUpdating ||
+                          removingProductId !==
+                            null
+                        }
+                      >
+                        {isRemoving
+                          ? "Removing..."
+                          : "Remove"}
+                      </button>
+                    </article>
+                  );
+                })}
               </div>
 
-              <div
-                className={
-                  styles.summaryRow
-                }
-              >
-                <span>
-                  Subtotal
-                </span>
-
-                <span>
-                  ₹
-                  {total.toLocaleString(
-                    "en-IN"
-                  )}
-                </span>
-              </div>
-
-              <div
-                className={
-                  styles.summaryRow
-                }
-              >
-                <span>
-                  Shipping
-                </span>
-
-                <span>
-                  Calculated at checkout
-                </span>
-              </div>
-
-              <div
-                className={
-                  styles.divider
-                }
-              />
-
-              <div
-                className={
-                  styles.totalRow
-                }
-              >
-                <strong>
-                  Total
-                </strong>
-
-                <strong>
-                  ₹
-                  {total.toLocaleString(
-                    "en-IN"
-                  )}
-                </strong>
-              </div>
-
-              <Link
-                to="/checkout"
-                className={
-                  styles.checkoutButton
-                }
-              >
-                Proceed to Checkout
-              </Link>
-
+              {/* CONTINUE SHOPPING */}
               <Link
                 to="/products"
                 className={
-                  styles.continueButton
+                  styles.continueShopping
                 }
               >
-                Continue Shopping
+                ← Continue Shopping
               </Link>
-            </div>
+            </section>
 
+            {/* ORDER SUMMARY */}
+            <aside className={styles.summary}>
+              <div
+                className={
+                  styles.summaryHeader
+                }
+              >
+                <p
+                  className={
+                    styles.summaryEyebrow
+                  }
+                >
+                  SUMMARY
+                </p>
+
+                <h2>
+                  Order Summary
+                </h2>
+              </div>
+
+              <div
+                className={
+                  styles.summaryContent
+                }
+              >
+                <div
+                  className={
+                    styles.summaryRow
+                  }
+                >
+                  <span>
+                    Items
+                  </span>
+
+                  <strong>
+                    {totalItems}
+                  </strong>
+                </div>
+
+                <div
+                  className={
+                    styles.summaryRow
+                  }
+                >
+                  <span>
+                    Subtotal
+                  </span>
+
+                  <strong>
+                    ₹
+                    {formatPrice(total)}
+                  </strong>
+                </div>
+
+                <div
+                  className={
+                    styles.summaryRow
+                  }
+                >
+                  <span>
+                    Shipping
+                  </span>
+
+                  <span
+                    className={
+                      styles.shippingText
+                    }
+                  >
+                    At checkout
+                  </span>
+                </div>
+
+                <div
+                  className={
+                    styles.divider
+                  }
+                />
+
+                <div
+                  className={
+                    styles.totalRow
+                  }
+                >
+                  <span>
+                    Total
+                  </span>
+
+                  <strong>
+                    ₹
+                    {formatPrice(total)}
+                  </strong>
+                </div>
+
+                <Link
+                  to="/checkout"
+                  className={
+                    styles.checkoutButton
+                  }
+                >
+                  Proceed to Checkout
+                  <span>→</span>
+                </Link>
+
+                <p
+                  className={
+                    styles.checkoutNote
+                  }
+                >
+                  Secure checkout powered by our
+                  microservices architecture.
+                </p>
+              </div>
+            </aside>
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }
 
 export default Cart;
+

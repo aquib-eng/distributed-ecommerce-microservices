@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -11,10 +12,12 @@ function Checkout() {
   const [cart, setCart] = useState(null);
   const [products, setProducts] = useState({});
 
-  const [paymentMethod, setPaymentMethod] = useState("COD");
+  const [paymentMethod, setPaymentMethod] =
+    useState("COD");
 
   const [loading, setLoading] = useState(true);
-  const [placingOrder, setPlacingOrder] = useState(false);
+  const [placingOrder, setPlacingOrder] =
+    useState(false);
 
   const [error, setError] = useState("");
 
@@ -29,25 +32,50 @@ function Checkout() {
 
       const response = await api.get("/api/cart");
 
-      console.log("Checkout cart response:", response.data);
+      console.log(
+        "Checkout cart response:",
+        response.data
+      );
 
       const cartData = response.data;
 
       setCart(cartData);
 
-      if (cartData.items && cartData.items.length > 0) {
-        const productResponses = await Promise.all(
-          cartData.items.map((item) =>
-            api.get(`/api/products/${item.productId}`)
-          )
-        );
+      if (
+        cartData.items &&
+        cartData.items.length > 0
+      ) {
+        const productResults =
+          await Promise.all(
+            cartData.items.map(async (item) => {
+              try {
+                const response = await api.get(
+                  `/api/products/${item.productId}`
+                );
+
+                return {
+                  productId: item.productId,
+                  product: response.data,
+                };
+              } catch (error) {
+                console.error(
+                  `Failed to fetch product ${item.productId}:`,
+                  error
+                );
+
+                return {
+                  productId: item.productId,
+                  product: null,
+                };
+              }
+            })
+          );
 
         const productMap = {};
 
-        productResponses.forEach((response, index) => {
-          const productId = cartData.items[index].productId;
-
-          productMap[productId] = response.data;
+        productResults.forEach((result) => {
+          productMap[result.productId] =
+            result.product;
         });
 
         setProducts(productMap);
@@ -56,6 +84,8 @@ function Checkout() {
           "Checkout products:",
           productMap
         );
+      } else {
+        setProducts({});
       }
     } catch (error) {
       console.error(
@@ -63,11 +93,10 @@ function Checkout() {
         error
       );
 
-      if (error.response?.data?.message) {
-        setError(error.response.data.message);
-      } else {
-        setError("Unable to load checkout.");
-      }
+      setError(
+        error.response?.data?.message ||
+          "Unable to load checkout."
+      );
     } finally {
       setLoading(false);
     }
@@ -79,7 +108,11 @@ function Checkout() {
     }
 
     return cart.items.reduce((total, item) => {
-      return total + item.price * item.quantity;
+      const price = Number(item.price) || 0;
+      const quantity =
+        Number(item.quantity) || 0;
+
+      return total + price * quantity;
     }, 0);
   };
 
@@ -88,20 +121,35 @@ function Checkout() {
       return 0;
     }
 
-    return cart.items.reduce((total, item) => {
-      return total + item.quantity;
-    }, 0);
+    return cart.items.reduce(
+      (total, item) =>
+        total + Number(item.quantity || 0),
+      0
+    );
+  };
+
+  const formatPrice = (price) => {
+    return Number(price || 0).toLocaleString(
+      "en-IN",
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    );
   };
 
   const handlePlaceOrder = async () => {
+    if (
+      !cart?.items ||
+      cart.items.length === 0
+    ) {
+      setError("Your cart is empty.");
+      return;
+    }
+
     try {
       setPlacingOrder(true);
       setError("");
-
-      if (!cart?.items || cart.items.length === 0) {
-        setError("Your cart is empty.");
-        return;
-      }
 
       const orderRequest = {
         items: cart.items.map((item) => ({
@@ -110,13 +158,17 @@ function Checkout() {
           price: item.price,
         })),
 
-        paymentMethod: paymentMethod,
+        paymentMethod,
       };
 
       console.log(
         "Creating order:",
         orderRequest
       );
+
+      // ==========================================
+      // STEP 1: CREATE ORDER
+      // ==========================================
 
       const response = await api.post(
         "/api/orders",
@@ -128,7 +180,45 @@ function Checkout() {
         response.data
       );
 
-      alert("Order placed successfully!");
+      // ==========================================
+      // STEP 2: CLEAR CART
+      // ==========================================
+
+      console.log(
+        "Clearing cart after successful order..."
+      );
+
+      try {
+        await api.delete("/api/cart");
+
+        console.log(
+          "Cart cleared successfully."
+        );
+      } catch (cartError) {
+        console.error(
+          "Order was created, but cart could not be cleared:",
+          cartError
+        );
+
+        /*
+         * The order was already successfully created.
+         * We do not cancel the order just because
+         * clearing the cart failed.
+         */
+      }
+
+      // ==========================================
+      // STEP 3: UPDATE LOCAL CART STATE
+      // ==========================================
+
+      setCart({
+        ...cart,
+        items: [],
+      });
+
+      // ==========================================
+      // STEP 4: GO TO ORDERS
+      // ==========================================
 
       navigate("/orders");
     } catch (error) {
@@ -137,60 +227,98 @@ function Checkout() {
         error
       );
 
-      if (error.response?.data?.message) {
-        setError(error.response.data.message);
-      } else {
-        setError(
+      setError(
+        error.response?.data?.message ||
           "Unable to place order. Please try again."
-        );
-      }
+      );
     } finally {
       setPlacingOrder(false);
     }
   };
 
+  // ============================================
+  // LOADING
+  // ============================================
+
   if (loading) {
     return (
-      <div className={styles.page}>
+      <main className={styles.page}>
         <div className={styles.container}>
-          <p className={styles.message}>
-            Loading checkout...
-          </p>
+          <div className={styles.loadingState}>
+            <div
+              className="spinner-border text-primary"
+              role="status"
+              aria-label="Loading checkout"
+            >
+              <span className="visually-hidden">
+                Loading...
+              </span>
+            </div>
+
+            <p>
+              Loading checkout...
+            </p>
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
+  // ============================================
+  // ERROR LOADING CART
+  // ============================================
+
   if (error && !cart) {
     return (
-      <div className={styles.page}>
+      <main className={styles.page}>
         <div className={styles.container}>
-          <div className={styles.errorBox}>
+          <div className={styles.errorState}>
+            <div className={styles.errorIcon}>
+              !
+            </div>
+
+            <p className={styles.errorEyebrow}>
+              CHECKOUT
+            </p>
+
             <h2>
-              Checkout Error
+              Unable to Load Checkout
             </h2>
 
-            <p>
-              {error}
-            </p>
+            <p>{error}</p>
 
             <Link
               to="/cart"
               className={styles.primaryButton}
             >
-              Back to Cart
+              ← Back to Cart
             </Link>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
-  if (!cart?.items || cart.items.length === 0) {
+  // ============================================
+  // EMPTY CART
+  // ============================================
+
+  if (
+    !cart?.items ||
+    cart.items.length === 0
+  ) {
     return (
-      <div className={styles.page}>
+      <main className={styles.page}>
         <div className={styles.container}>
-          <div className={styles.emptyBox}>
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>
+              🛒
+            </div>
+
+            <p className={styles.emptyEyebrow}>
+              CHECKOUT
+            </p>
+
             <h2>
               Your Cart is Empty
             </h2>
@@ -204,11 +332,11 @@ function Checkout() {
               to="/products"
               className={styles.primaryButton}
             >
-              Continue Shopping
+              Browse Products
             </Link>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -216,57 +344,138 @@ function Checkout() {
   const totalItems = calculateTotalItems();
 
   return (
-    <div className={styles.page}>
+    <main className={styles.page}>
       <div className={styles.container}>
 
-        <div className={styles.header}>
-          <h1 className={styles.title}>
-            Checkout
-          </h1>
+        {/* HEADER */}
+        <header className={styles.header}>
+          <div>
+            <p className={styles.eyebrow}>
+              SECURE CHECKOUT
+            </p>
 
-          <p className={styles.subtitle}>
-            Review your order and select a payment
-            method.
-          </p>
-        </div>
+            <h1 className={styles.title}>
+              Checkout
+            </h1>
 
+            <p className={styles.subtitle}>
+              Review your order and choose your
+              preferred payment method.
+            </p>
+          </div>
+
+          <Link
+            to="/cart"
+            className={styles.cartLink}
+          >
+            ← Back to Cart
+          </Link>
+        </header>
+
+        {/* ERROR */}
         {error && (
-          <div className={styles.errorMessage}>
-            {error}
+          <div
+            className={styles.errorMessage}
+            role="alert"
+          >
+            <span
+              className={
+                styles.errorMessageIcon
+              }
+            >
+              !
+            </span>
+
+            <span>{error}</span>
           </div>
         )}
 
         <div className={styles.checkoutLayout}>
 
-          {/* ORDER ITEMS */}
-
+          {/* LEFT SIDE */}
           <div className={styles.orderSection}>
 
-            <div className={styles.sectionCard}>
+            {/* ORDER ITEMS */}
+            <section
+              className={styles.sectionCard}
+            >
+              <div
+                className={
+                  styles.sectionHeader
+                }
+              >
+                <div>
+                  <p
+                    className={
+                      styles.sectionEyebrow
+                    }
+                  >
+                    YOUR ORDER
+                  </p>
 
-              <h2 className={styles.sectionTitle}>
-                Order Items
-              </h2>
+                  <h2
+                    className={
+                      styles.sectionTitle
+                    }
+                  >
+                    Order Items
+                  </h2>
+                </div>
 
-              <div className={styles.itemsList}>
+                <span
+                  className={styles.itemBadge}
+                >
+                  {totalItems}{" "}
+                  {totalItems === 1
+                    ? "Item"
+                    : "Items"}
+                </span>
+              </div>
 
+              <div
+                className={styles.itemsList}
+              >
                 {cart.items.map((item) => {
                   const product =
                     products[item.productId];
 
+                  const image =
+                    product?.imageUrl ||
+                    product?.image ||
+                    "";
+
+                  const itemTotal =
+                    Number(item.price || 0) *
+                    Number(item.quantity || 0);
+
                   return (
-                    <div
+                    <article
                       key={item.productId}
                       className={styles.item}
                     >
-
-                      <div className={styles.imageContainer}>
-
-                        {product?.imageUrl ? (
+                      {/* IMAGE */}
+                      <Link
+                        to={`/products/${item.productId}`}
+                        className={
+                          styles.imageLink
+                        }
+                      >
+                        {image ? (
                           <img
-                            src={product.imageUrl}
-                            alt={product.name}
-                            className={styles.image}
+                            src={image}
+                            alt={
+                              product?.name ||
+                              "Product"
+                            }
+                            className={
+                              styles.image
+                            }
+                            onError={(
+                              event
+                            ) => {
+                              event.currentTarget.style.display =
+                                "none";
+                            }}
                           />
                         ) : (
                           <div
@@ -274,75 +483,117 @@ function Checkout() {
                               styles.imagePlaceholder
                             }
                           >
-                            Product
+                            🛍️
                           </div>
                         )}
+                      </Link>
 
-                      </div>
-
-                      <div className={styles.itemDetails}>
-
+                      {/* DETAILS */}
+                      <div
+                        className={
+                          styles.itemDetails
+                        }
+                      >
                         <Link
                           to={`/products/${item.productId}`}
-                          className={styles.productName}
+                          className={
+                            styles.productName
+                          }
                         >
                           {product?.name ||
                             "Product"}
                         </Link>
 
                         {product?.category && (
-                          <p className={styles.category}>
+                          <span
+                            className={
+                              styles.category
+                            }
+                          >
                             {product.category}
-                          </p>
+                          </span>
                         )}
 
-                        <p className={styles.productId}>
-                          Product ID:{" "}
-                          {item.productId}
-                        </p>
-
-                        <p className={styles.quantity}>
+                        <p
+                          className={
+                            styles.quantity
+                          }
+                        >
                           Quantity:{" "}
-                          {item.quantity}
+                          <strong>
+                            {item.quantity}
+                          </strong>
                         </p>
 
+                        <p
+                          className={
+                            styles.unitPrice
+                          }
+                        >
+                          ₹
+                          {formatPrice(
+                            item.price
+                          )}{" "}
+                          per item
+                        </p>
                       </div>
 
-                      <div className={styles.itemPrice}>
+                      {/* PRICE */}
+                      <div
+                        className={
+                          styles.itemPrice
+                        }
+                      >
+                        <span>
+                          Subtotal
+                        </span>
 
-                        <p className={styles.price}>
+                        <strong>
                           ₹
-                          {(
-                            item.price *
-                            item.quantity
-                          ).toFixed(2)}
-                        </p>
-
-                        <p className={styles.unitPrice}>
-                          ₹
-                          {item.price.toFixed(2)} each
-                        </p>
-
+                          {formatPrice(
+                            itemTotal
+                          )}
+                        </strong>
                       </div>
-
-                    </div>
+                    </article>
                   );
                 })}
-
               </div>
-
-            </div>
+            </section>
 
             {/* PAYMENT */}
+            <section
+              className={styles.sectionCard}
+            >
+              <div
+                className={
+                  styles.sectionHeader
+                }
+              >
+                <div>
+                  <p
+                    className={
+                      styles.sectionEyebrow
+                    }
+                  >
+                    PAYMENT
+                  </p>
 
-            <div className={styles.sectionCard}>
+                  <h2
+                    className={
+                      styles.sectionTitle
+                    }
+                  >
+                    Payment Method
+                  </h2>
+                </div>
+              </div>
 
-              <h2 className={styles.sectionTitle}>
-                Payment Method
-              </h2>
-
-              <div className={styles.paymentOptions}>
-
+              <div
+                className={
+                  styles.paymentOptions
+                }
+              >
                 <label
                   className={
                     paymentMethod === "COD"
@@ -350,7 +601,6 @@ function Checkout() {
                       : styles.paymentOption
                   }
                 >
-
                   <input
                     type="radio"
                     name="paymentMethod"
@@ -365,100 +615,212 @@ function Checkout() {
                     }
                   />
 
-                  <div>
+                  <span
+                    className={
+                      styles.radioCustom
+                    }
+                  ></span>
+
+                  <span
+                    className={
+                      styles.paymentIcon
+                    }
+                  >
+                    💵
+                  </span>
+
+                  <span
+                    className={
+                      styles.paymentContent
+                    }
+                  >
                     <strong>
                       Cash on Delivery
                     </strong>
 
-                    <p>
+                    <small>
                       Pay when your order is
                       delivered.
-                    </p>
-                  </div>
+                    </small>
+                  </span>
 
+                  {paymentMethod === "COD" && (
+                    <span
+                      className={
+                        styles.selectedBadge
+                      }
+                    >
+                      Selected
+                    </span>
+                  )}
                 </label>
+              </div>
+            </section>
 
+            {/* TRUST */}
+            <div className={styles.trustBox}>
+              <div className={styles.trustIcon}>
+                ✓
               </div>
 
-            </div>
+              <div>
+                <strong>
+                  Secure Order Processing
+                </strong>
 
+                <p>
+                  Your order is securely processed
+                  through the e-commerce
+                  microservices architecture.
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* ORDER SUMMARY */}
-
+          {/* RIGHT SIDE */}
           <aside className={styles.summaryCard}>
-
-            <h2 className={styles.sectionTitle}>
-              Order Summary
-            </h2>
-
-            <div className={styles.summaryRow}>
-              <span>
-                Items
-              </span>
-
-              <span>
-                {totalItems}
-              </span>
-            </div>
-
-            <div className={styles.summaryRow}>
-              <span>
-                Subtotal
-              </span>
-
-              <span>
-                ₹{subtotal.toFixed(2)}
-              </span>
-            </div>
-
-            <div className={styles.summaryRow}>
-              <span>
-                Payment
-              </span>
-
-              <span>
-                {paymentMethod}
-              </span>
-            </div>
-
-            <div className={styles.divider} />
-
-            <div className={styles.totalRow}>
-              <span>
-                Total
-              </span>
-
-              <span>
-                ₹{subtotal.toFixed(2)}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              className={styles.placeOrderButton}
-              onClick={handlePlaceOrder}
-              disabled={placingOrder}
+            <div
+              className={
+                styles.summaryHeader
+              }
             >
-              {placingOrder
-                ? "Placing Order..."
-                : "Place Order"}
-            </button>
+              <p
+                className={
+                  styles.summaryEyebrow
+                }
+              >
+                SUMMARY
+              </p>
 
-            <Link
-              to="/cart"
-              className={styles.backToCart}
+              <h2>
+                Order Summary
+              </h2>
+            </div>
+
+            <div
+              className={
+                styles.summaryContent
+              }
             >
-              ← Back to Cart
-            </Link>
+              <div className={styles.summaryRow}>
+                <span>
+                  Items
+                </span>
 
+                <strong>
+                  {totalItems}
+                </strong>
+              </div>
+
+              <div className={styles.summaryRow}>
+                <span>
+                  Subtotal
+                </span>
+
+                <strong>
+                  ₹
+                  {formatPrice(subtotal)}
+                </strong>
+              </div>
+
+              <div className={styles.summaryRow}>
+                <span>
+                  Payment
+                </span>
+
+                <span
+                  className={
+                    styles.paymentValue
+                  }
+                >
+                  Cash on Delivery
+                </span>
+              </div>
+
+              <div
+                className={
+                  styles.shippingRow
+                }
+              >
+                <div>
+                  <span>
+                    Shipping
+                  </span>
+
+                  <small>
+                    Delivery charges
+                  </small>
+                </div>
+
+                <strong>
+                  At checkout
+                </strong>
+              </div>
+
+              <div
+                className={styles.divider}
+              />
+
+              <div className={styles.totalRow}>
+                <span>
+                  Total
+                </span>
+
+                <strong>
+                  ₹
+                  {formatPrice(subtotal)}
+                </strong>
+              </div>
+
+              <button
+                type="button"
+                className={
+                  styles.placeOrderButton
+                }
+                onClick={handlePlaceOrder}
+                disabled={placingOrder}
+              >
+                {placingOrder ? (
+                  <>
+                    <span
+                      className={
+                        styles.buttonSpinner
+                      }
+                    ></span>
+
+                    Placing Order...
+                  </>
+                ) : (
+                  <>
+                    Place Order
+                    <span>→</span>
+                  </>
+                )}
+              </button>
+
+              <Link
+                to="/cart"
+                className={styles.backToCart}
+              >
+                ← Edit Cart
+              </Link>
+
+              <p
+                className={
+                  styles.summaryNote
+                }
+              >
+                By placing your order, you confirm
+                the items and payment method selected
+                above.
+              </p>
+            </div>
           </aside>
-
         </div>
-
       </div>
-    </div>
+    </main>
   );
 }
 
 export default Checkout;
+
