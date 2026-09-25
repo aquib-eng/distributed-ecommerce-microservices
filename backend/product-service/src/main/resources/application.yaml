@@ -7,16 +7,17 @@ spring:
 
   data:
     mongodb:
-      uri: mongodb://localhost:27017/product_db
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/product_db}
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
 
   instance:
-    prefer-ip-address: true
-    ip-address: 127.0.0.1
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+    prefer-ip-address: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:true}
+    ip-address: ${EUREKA_INSTANCE_IP_ADDRESS:127.0.0.1}
 
 management:
   endpoints:
